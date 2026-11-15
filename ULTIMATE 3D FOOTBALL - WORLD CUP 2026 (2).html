@@ -1,0 +1,2520 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>ULTIMATE 3D FOOTBALL – WORLD CUP 2026</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" crossorigin="anonymous"></script>
+    <style>
+        :root {
+            --bg-dark: #060b14;
+            --panel: rgba(12, 22, 38, 0.94);
+            --border: rgba(255, 255, 255, 0.14);
+            --gold: #f5b942;
+            --green: #10b981;
+            --blue: #3b82f6;
+            --red: #ef4444;
+            --text: #f8fafc;
+            --muted: #94a3b8;
+        }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            font-family: system-ui, -apple-system, 'Segoe UI', Tahoma, Arial, sans-serif;
+        }
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #060b14;
+            color: var(--text);
+            touch-action: none;
+        }
+
+        /* تنبيه تدوير الشاشة للوضع الأفقي Landscape */
+        #rotate-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: #060b14;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 24px;
+        }
+        @media screen and (orientation: portrait) and (max-width: 900px) {
+            #rotate-overlay { display: flex; }
+        }
+        .phone-icon {
+            font-size: 4rem;
+            margin-bottom: 16px;
+            animation: rotatePhone 1.6s infinite ease-in-out;
+        }
+        @keyframes rotatePhone {
+            0%, 100% { transform: rotate(0deg); }
+            50% { transform: rotate(-90deg); }
+        }
+
+        #game-canvas {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            z-index: 1;
+            background: radial-gradient(circle at center, #0e291c 0%, #060b14 100%);
+        }
+        .screen {
+            position: fixed;
+            inset: 0;
+            z-index: 10;
+            display: none;
+            flex-direction: column;
+            overflow-y: auto;
+            background: radial-gradient(circle at top, rgba(16, 40, 68, 0.85), rgba(6, 11, 20, 0.96));
+            padding: 10px 18px;
+        }
+        .screen.active { display: flex; }
+
+        /* القائمة الرئيسية الفورية */
+        #main-menu {
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(180deg, rgba(6,11,20,0.45) 0%, rgba(6,11,20,0.88) 100%);
+            text-align: center;
+            padding: 14px 20px;
+        }
+        .hero-badge {
+            display: inline-block;
+            padding: 4px 14px;
+            border-radius: 99px;
+            background: rgba(245, 185, 66, 0.16);
+            border: 1px solid var(--gold);
+            color: var(--gold);
+            font-weight: 800;
+            font-size: 0.78rem;
+            letter-spacing: 1px;
+        }
+        .hero-title {
+            font-size: clamp(1.5rem, 4.5vw, 2.8rem);
+            font-weight: 900;
+            line-height: 1.1;
+            margin: 6px 0 2px;
+            text-shadow: 0 4px 24px rgba(0,0,0,0.85);
+            background: linear-gradient(180deg, #ffffff 30%, #cbd5e1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .hero-sub {
+            color: var(--gold);
+            font-weight: 800;
+            font-size: clamp(0.9rem, 2.5vw, 1.2rem);
+        }
+        .mode-cards {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(240px, 1fr));
+            gap: 14px;
+            width: 100%;
+            max-width: 820px;
+            margin: auto 0;
+        }
+        .mode-card {
+            background: var(--panel);
+            border: 2px solid var(--border);
+            border-radius: 16px;
+            padding: 14px 18px;
+            cursor: pointer;
+            text-align: right;
+            transition: transform 0.15s, border-color 0.15s;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.5);
+        }
+        .mode-card:active { transform: scale(0.98); }
+        .mode-card.free:hover { border-color: var(--green); }
+        .mode-card.wc { border-color: rgba(245, 185, 66, 0.45); }
+        .mode-card.wc:hover { border-color: var(--gold); }
+        .mode-icon { font-size: 1.8rem; margin-bottom: 4px; }
+        .mode-title { font-size: 1.15rem; font-weight: 900; margin-bottom: 4px; }
+        .mode-desc { font-size: 0.82rem; color: var(--muted); line-height: 1.35; }
+
+        /* الأزرار والبطاقات */
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 10px;
+            flex-shrink: 0;
+        }
+        .btn {
+            border: none;
+            border-radius: 12px;
+            padding: 9px 16px;
+            font-size: 0.9rem;
+            font-weight: 800;
+            cursor: pointer;
+            color: #fff;
+            background: #1e293b;
+            border: 1px solid var(--border);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn:active { transform: scale(0.97); }
+        .btn-green { background: linear-gradient(135deg, #10b981, #059669); border: none; }
+        .btn-gold { background: linear-gradient(135deg, #f59e0b, #d97706); color: #090d16; border: none; }
+        .btn-blue { background: linear-gradient(135deg, #3b82f6, #2563eb); border: none; }
+        .btn-red { background: linear-gradient(135deg, #ef4444, #dc2626); border: none; }
+
+        .panel-box {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(240px, 1fr));
+            gap: 12px;
+        }
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+            gap: 8px;
+            max-height: 185px;
+            overflow-y: auto;
+            padding: 4px;
+        }
+        .team-item {
+            background: rgba(255,255,255,0.04);
+            border: 2px solid transparent;
+            border-radius: 10px;
+            padding: 6px;
+            text-align: center;
+            cursor: pointer;
+        }
+        .team-item.selected {
+            border-color: var(--gold);
+            background: rgba(245, 185, 66, 0.16);
+        }
+        .kit-preview {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            margin: 3px auto;
+            border: 2px solid #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 0.7rem;
+            text-shadow: 0 1px 2px #000;
+        }
+        select, input[type="range"] {
+            width: 100%;
+            padding: 8px;
+            border-radius: 10px;
+            background: #0f172a;
+            color: #fff;
+            border: 1px solid var(--border);
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+
+        /* شاشة المباراة HUD */
+        #match-hud {
+            position: fixed;
+            inset: 0;
+            z-index: 20;
+            display: none;
+            pointer-events: none;
+        }
+        #match-hud.active { display: block; }
+        .scoreboard {
+            position: absolute;
+            top: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            background: rgba(8, 14, 26, 0.92);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.6);
+            pointer-events: auto;
+            direction: ltr;
+        }
+        .sb-team {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 11px;
+            font-weight: 900;
+            font-size: 0.9rem;
+        }
+        .sb-color { width: 5px; height: 20px; border-radius: 3px; }
+        .sb-score {
+            background: #f5b942;
+            color: #060b14;
+            padding: 5px 12px;
+            font-weight: 900;
+            font-size: 1.05rem;
+        }
+        .sb-time {
+            padding: 5px 9px;
+            font-weight: 800;
+            font-size: 0.82rem;
+            color: #34d399;
+            background: rgba(255,255,255,0.06);
+        }
+        .pause-btn {
+            position: absolute;
+            top: 8px;
+            right: 14px;
+            pointer-events: auto;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: rgba(8, 14, 26, 0.88);
+            border: 1px solid var(--border);
+            color: #fff;
+            font-weight: 900;
+            cursor: pointer;
+        }
+        .active-player-tag {
+            position: absolute;
+            bottom: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(8, 14, 26, 0.85);
+            border: 1px solid var(--border);
+            padding: 4px 14px;
+            border-radius: 99px;
+            font-size: 0.8rem;
+            font-weight: 800;
+            color: #e2e8f0;
+        }
+
+        /* عصا التحكم اليسرى + الأزرار الثلاثة اليمنى بالتوزيع المطلوب */
+        #player-controls {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+        #joystick-zone {
+            position: absolute;
+            left: 20px;
+            bottom: 16px;
+            width: 140px;
+            height: 140px;
+            pointer-events: auto;
+            touch-action: none;
+        }
+        #joystick-base {
+            position: absolute;
+            inset: 10px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.12);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        #joystick-stick {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 52px;
+            height: 52px;
+            margin: -26px 0 0 -26px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #ffffff, #94a3b8);
+            box-shadow: 0 4px 14px rgba(0,0,0,0.6);
+        }
+
+        /* مجموعة الأزرار اليمنى:
+           - زر الضغط PRESS أكبر حجمًا في الأسفل على اليمين
+           - فوقه زر التسديد SHOOT
+           - وعلى يساره زر التمرير PASS */
+        .action-cluster {
+            position: absolute;
+            right: 20px;
+            bottom: 16px;
+            width: 195px;
+            height: 185px;
+            pointer-events: auto;
+            touch-action: none;
+        }
+        .act-btn {
+            position: absolute;
+            border-radius: 50%;
+            border: 3px solid rgba(255,255,255,0.5);
+            color: #fff;
+            font-weight: 900;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+            cursor: pointer;
+            touch-action: none;
+        }
+        .act-btn:active, .act-btn.pressed { transform: scale(0.92); filter: brightness(1.2); }
+
+        /* زر الضغط أكبر وفي الأسفل على اليمين */
+        #btn-press {
+            width: 84px;
+            height: 84px;
+            bottom: 0;
+            right: 0;
+            font-size: 0.9rem;
+            background: radial-gradient(circle at 30% 30%, #10b981, #047857);
+        }
+        /* زر التسديد فوق زر الضغط */
+        #btn-shoot {
+            width: 72px;
+            height: 72px;
+            bottom: 94px;
+            right: 6px;
+            font-size: 0.82rem;
+            background: radial-gradient(circle at 30% 30%, #ef4444, #b91c1c);
+        }
+        /* زر التمرير على يساره */
+        #btn-pass {
+            width: 72px;
+            height: 72px;
+            bottom: 14px;
+            right: 96px;
+            font-size: 0.82rem;
+            background: radial-gradient(circle at 30% 30%, #3b82f6, #1d4ed8);
+        }
+
+        #shoot-power-bar {
+            position: absolute;
+            bottom: 195px;
+            right: 22px;
+            width: 150px;
+            height: 10px;
+            background: rgba(0,0,0,0.75);
+            border-radius: 99px;
+            border: 1px solid #fff;
+            overflow: hidden;
+            display: none;
+        }
+        #shoot-power-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #10b981, #f59e0b, #ef4444);
+        }
+
+        /* شريط المدير الفني أثناء المباراة */
+        #manager-bar {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            gap: 8px;
+            background: rgba(8, 14, 26, 0.92);
+            border: 1px solid var(--gold);
+            padding: 6px 12px;
+            border-radius: 12px;
+            pointer-events: auto;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        /* الملعب التكتيكي 2D للمدير الفني */
+        .tactics-pitch {
+            position: relative;
+            width: 100%;
+            max-width: 380px;
+            height: 240px;
+            margin: 0 auto;
+            background: repeating-linear-gradient(0deg, #15803d 0px, #15803d 24px, #166534 24px, #166534 48px);
+            border: 3px solid #fff;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .pitch-node {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            background: #0f172a;
+            border: 2px solid var(--gold);
+            color: #fff;
+            padding: 3px 6px;
+            border-radius: 7px;
+            font-size: 0.68rem;
+            font-weight: 800;
+            text-align: center;
+            cursor: pointer;
+            min-width: 54px;
+        }
+        .pitch-node.active-swap { background: var(--gold); color: #000; }
+
+        /* جداول كأس العالم */
+        .groups-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 10px;
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+        th, td { padding: 4px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        th { color: var(--gold); }
+        td:first-child, th:first-child { text-align: right; }
+
+        /* لافتة الهدف والنوافذ المنبثقة */
+        #goal-banner {
+            position: fixed;
+            inset: 0;
+            z-index: 40;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.45);
+            pointer-events: none;
+        }
+        .goal-text {
+            font-size: clamp(2.4rem, 8vw, 4.8rem);
+            font-weight: 900;
+            color: var(--gold);
+            text-shadow: 0 0 30px rgba(245, 185, 66, 0.9), 0 4px 10px #000;
+            animation: popGoal 0.5s ease-out;
+        }
+        @keyframes popGoal {
+            0% { transform: scale(0.3); opacity: 0; }
+            80% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); }
+        }
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 50;
+            background: rgba(4, 8, 16, 0.88);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 14px;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-card {
+            background: var(--panel);
+            border: 1px solid var(--gold);
+            border-radius: 16px;
+            padding: 16px;
+            width: 100%;
+            max-width: 460px;
+            max-height: 90vh;
+            overflow-y: auto;
+            text-align: center;
+        }
+        #cdn-warning {
+            position: fixed;
+            top: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 60;
+            background: #b91c1c;
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            font-weight: 800;
+            display: none;
+            align-items: center;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- شاشة تدوير الهاتف للوضع الأفقي بالعرض -->
+<div id="rotate-overlay">
+    <div class="phone-icon">📱</div>
+    <h2 style="color:var(--gold); margin-bottom:8px;">يرجى تدوير الهاتف بالعرض (Landscape)</h2>
+    <p style="color:var(--muted); max-width:320px;">تم تصميم اللعبة لتعمل بالعرض على الهواتف والتابلت لرؤية الملعب بالكامل والتحكم السلس.</p>
+</div>
+
+<canvas id="game-canvas"></canvas>
+
+<div id="cdn-warning">
+    <span>⚠️ تعذر تحميل Three.js 3D من الشبكة (يعمل وضع الطوارئ 2.5D)</span>
+    <button class="btn btn-gold" style="padding:4px 10px;font-size:0.78rem" onclick="retryLoadThree()">إعادة المحاولة</button>
+</div>
+
+<!-- 1. الشاشة الرئيسية -->
+<div id="main-menu" class="screen active">
+    <div>
+        <div class="hero-badge">FIFA WORLD CUP 2026™ • OFFICIAL 48 TEAMS</div>
+        <h1 class="hero-title">ULTIMATE 3D FOOTBALL</h1>
+        <div class="hero-sub">WORLD CUP 2026 EDITION</div>
+    </div>
+
+    <div class="mode-cards">
+        <div class="mode-card free" onclick="openFreePlaySetup()">
+            <div class="mode-icon">⚽</div>
+            <div class="mode-title">FREE PLAY – العب براحتك</div>
+            <div class="mode-desc">اختر أي منتخبين من المنتخبات الـ48، حدد المدة ومستوى الذكاء الاصطناعي، وابدأ مباراة 3D مباشرة بالعرض.</div>
+        </div>
+        <div class="mode-card wc" onclick="openWorldCupEntry()">
+            <div class="mode-icon">🏆</div>
+            <div class="mode-title">WORLD CUP 2026 – كأس العالم</div>
+            <div class="mode-desc">البطولة الرسمية بـ 48 منتخبًا و12 مجموعة ثم دور الـ32 حتى النهائي. اختر اللعب كلاعب أو نمط المدير الفني (Manager Mode).</div>
+        </div>
+    </div>
+
+    <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center; align-items:center;">
+        <span style="font-size:0.8rem; color:var(--muted);">جودة الرسومات:</span>
+        <select id="gfx-quality" style="width:auto; padding:5px 10px;" onchange="applyGraphicsQuality()">
+            <option value="low">منخفضة (أسرع للهواتف)</option>
+            <option value="med" selected>متوسطة (60 FPS)</option>
+            <option value="high">عالية (ظلال وتفاصيل)</option>
+        </select>
+    </div>
+</div>
+
+<!-- 2. إعداد المباراة الحرة FREE PLAY -->
+<div id="freeplay-screen" class="screen">
+    <div class="top-bar">
+        <button class="btn" onclick="showScreen('main-menu')">⬅ الرئيسية</button>
+        <h2>⚽ FREE PLAY – اختيار المنتخبات</h2>
+        <button class="btn btn-green" onclick="startFreePlayMatch()">ابدأ المباراة ▶</button>
+    </div>
+
+    <div class="grid-2">
+        <div class="panel-box">
+            <h3 style="color:var(--green); margin-bottom:6px; font-size:0.95rem;">منتخبك (الفريق الأول)</h3>
+            <div id="fp-home-preview" style="font-weight:900; margin-bottom:6px; font-size:0.9rem;"></div>
+            <div id="fp-home-grid" class="team-grid"></div>
+        </div>
+        <div class="panel-box">
+            <h3 style="color:var(--red); margin-bottom:6px; font-size:0.95rem;">الخصم (الفريق الثاني)</h3>
+            <div id="fp-away-preview" style="font-weight:900; margin-bottom:6px; font-size:0.9rem;"></div>
+            <div id="fp-away-grid" class="team-grid"></div>
+        </div>
+    </div>
+
+    <div class="panel-box grid-2">
+        <div>
+            <label style="display:block; margin-bottom:4px; font-weight:800; font-size:0.85rem;">⏱ مدة المباراة:</label>
+            <select id="fp-duration">
+                <option value="90">سريعة (دقيقتان واقعيتان = 90 دقيقة)</option>
+                <option value="150" selected>متوسطة (3 دقائق واقعيات = 90 دقيقة)</option>
+                <option value="240">طويلة (4 دقائق واقعيات = 90 دقيقة)</option>
+            </select>
+        </div>
+        <div>
+            <label style="display:block; margin-bottom:4px; font-weight:800; font-size:0.85rem;">🧠 مستوى صعوبة الذكاء الاصطناعي:</label>
+            <select id="fp-difficulty">
+                <option value="easy">سهل (Amateur)</option>
+                <option value="normal" selected>متوسط (Professional)</option>
+                <option value="hard">صعب (Top Player)</option>
+                <option value="legend">أسطوري (Superstar)</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+<!-- 3. بوابة اختيار نمط كأس العالم 2026 -->
+<div id="wc-entry-screen" class="screen">
+    <div class="top-bar">
+        <button class="btn" onclick="showScreen('main-menu')">⬅ الرئيسية</button>
+        <h2>🏆 بطولة كأس العالم 2026 (48 منتخبًا)</h2>
+        <div></div>
+    </div>
+
+    <div id="wc-continue-box" class="panel-box" style="display:none; border-color:var(--gold); text-align:center;">
+        <h3 style="color:var(--gold); margin-bottom:4px;">يوجد تقدم محفوظ لكأس العالم 2026</h3>
+        <p id="wc-save-summary" style="color:var(--muted); margin-bottom:10px; font-size:0.85rem;"></p>
+        <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+            <button class="btn btn-gold" onclick="resumeWorldCup()">استكمال البطولة المحفوظة ▶</button>
+            <button class="btn btn-red" onclick="resetWorldCupSave()">بدء بطولة جديدة</button>
+        </div>
+    </div>
+
+    <div class="panel-box">
+        <h3 style="margin-bottom:6px; font-size:0.95rem;">1️⃣ اختر نمط اللعب في كأس العالم:</h3>
+        <div class="grid-2">
+            <div id="submode-player" class="mode-card free" style="border-color:var(--green);" onclick="selectWCSubmode('player')">
+                <div class="mode-title">🎮 PLAY WORLD CUP (لاعب)</div>
+                <div class="mode-desc">تحكم بفريقك داخل الملعب بعصا الحركة والأزرار الثلاثة وقُد منتخبك للتتويج بالكأس.</div>
+            </div>
+            <div id="submode-manager" class="mode-card wc" onclick="selectWCSubmode('manager')">
+                <div class="mode-title">📋 WORLD CUP MANAGER – BE THE COACH</div>
+                <div class="mode-desc">نمط المدير الفني فقط: اختر التشكيلة، اسحب اللاعبين، ضع التكتيك، وشاهد الذكاء الاصطناعي ينفذ خطتك تلقائيًا!</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel-box">
+        <h3 style="margin-bottom:6px; font-size:0.95rem;">2️⃣ اختر منتخبك من المنتخبات الـ48 المشاركة:</h3>
+        <div id="wc-selected-info" style="font-weight:900; color:var(--gold); margin-bottom:6px; font-size:0.9rem;"></div>
+        <div id="wc-team-grid" class="team-grid" style="max-height:200px;"></div>
+        <div style="margin-top:10px; text-align:center;">
+            <button class="btn btn-gold" style="padding:11px 24px; font-size:1rem;" onclick="createNewWorldCup()">انطلاق قرعة كأس العالم 2026 🏆</button>
+        </div>
+    </div>
+</div>
+
+<!-- 4. لوحة بطولة كأس العالم 2026 -->
+<div id="wc-hub-screen" class="screen">
+    <div class="top-bar">
+        <button class="btn" onclick="showScreen('main-menu')">⬅ الرئيسية</button>
+        <h2 id="wc-hub-title">🏆 كأس العالم 2026</h2>
+        <button class="btn btn-blue" onclick="openTacticsScreen()">📋 التشكيلة والتكتيك</button>
+    </div>
+
+    <div class="panel-box" style="border-color:var(--gold);">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <div>
+                <div id="wc-stage-label" style="color:var(--gold); font-weight:900; font-size:0.85rem;"></div>
+                <h3 id="wc-next-match-title" style="font-size:1.1rem; margin-top:2px;"></h3>
+            </div>
+            <button id="wc-play-next-btn" class="btn btn-green" style="padding:10px 22px; font-size:1rem;" onclick="launchNextWorldCupMatch()">العب المباراة القادمة ⚽</button>
+        </div>
+    </div>
+
+    <div id="wc-groups-container" class="groups-grid"></div>
+    <div id="wc-knockout-container" class="panel-box" style="display:none;"></div>
+</div>
+
+<!-- 5. شاشة التشكيلة والتكتيك (للمدير الفني واللاعب) -->
+<div id="tactics-screen" class="screen">
+    <div class="top-bar">
+        <button class="btn" onclick="closeTacticsScreen()">⬅ رجوع</button>
+        <h2>📋 التشكيلة والتكتيك (Manager Board)</h2>
+        <button class="btn btn-green" onclick="closeTacticsScreen()">حفظ واعتماد ✔</button>
+    </div>
+
+    <div class="grid-2">
+        <div class="panel-box">
+            <div style="display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
+                <div style="flex:1;">
+                    <label style="font-size:0.78rem; color:var(--muted);">الخطة (Formation):</label>
+                    <select id="tac-formation" onchange="changeFormation(this.value)">
+                        <option value="4-3-3">4-3-3</option>
+                        <option value="4-4-2">4-4-2</option>
+                        <option value="4-2-3-1">4-2-3-1</option>
+                        <option value="3-5-2">3-5-2</option>
+                        <option value="3-4-3">3-4-3</option>
+                        <option value="5-3-2">5-3-2</option>
+                        <option value="4-1-4-1">4-1-4-1</option>
+                    </select>
+                </div>
+                <div style="flex:1;">
+                    <label style="font-size:0.78rem; color:var(--muted);">أسلوب اللعب:</label>
+                    <select id="tac-style" onchange="updateTacticSettings()">
+                        <option value="balanced">متوازن (Balanced)</option>
+                        <option value="attack">أسلوب هجومي (Attacking)</option>
+                        <option value="defend">أسلوب دفاعي (Defensive)</option>
+                        <option value="highpress">ضغط عالٍ (High Press)</option>
+                        <option value="counter">هجمات مرتدة (Counter)</option>
+                        <option value="possession">استحواذ (Possession)</option>
+                        <option value="wings">لعب على الأطراف (Wing Play)</option>
+                    </select>
+                </div>
+            </div>
+
+            <p style="font-size:0.75rem; color:var(--gold); margin-bottom:4px;">اضغط على لاعب في الملعب ثم اضغط على لاعب من الاحتياط للتبديل:</p>
+            <div id="tactics-pitch" class="tactics-pitch"></div>
+
+            <div class="grid-2" style="margin-top:8px;">
+                <div>
+                    <label style="font-size:0.75rem;">خط الدفاع: <span id="val-defline">50</span>%</label>
+                    <input type="range" id="tac-defline" min="20" max="85" value="50" oninput="updateTacticSettings()">
+                </div>
+                <div>
+                    <label style="font-size:0.75rem;">سرعة بناء الهجمة: <span id="val-tempo">60</span>%</label>
+                    <input type="range" id="tac-tempo" min="20" max="95" value="60" oninput="updateTacticSettings()">
+                </div>
+            </div>
+        </div>
+
+        <div class="panel-box">
+            <h3 style="margin-bottom:6px; font-size:0.95rem;">قائمة اللاعبين الرسمية (الأساسيون والاحتياط)</h3>
+            <div style="display:flex; gap:8px; margin-bottom:6px; flex-wrap:wrap;">
+                <div style="flex:1;">
+                    <label style="font-size:0.75rem; color:var(--gold);">قائد الفريق (Captain):</label>
+                    <select id="tac-captain" onchange="updateTacticSettings()"></select>
+                </div>
+                <div style="flex:1;">
+                    <label style="font-size:0.75rem; color:var(--gold);">منفذ الركلات:</label>
+                    <select id="tac-taker" onchange="updateTacticSettings()"></select>
+                </div>
+            </div>
+            <div id="squad-list" style="max-height:240px; overflow-y:auto;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- 6. واجهة المباراة الحية HUD -->
+<div id="match-hud">
+    <div class="scoreboard">
+        <div class="sb-team">
+            <div id="hud-home-color" class="sb-color"></div>
+            <span id="hud-home-code">ARG</span>
+        </div>
+        <div id="hud-score" class="sb-score">0 - 0</div>
+        <div class="sb-team">
+            <span id="hud-away-code">FRA</span>
+            <div id="hud-away-color" class="sb-color"></div>
+        </div>
+        <div id="hud-clock" class="sb-time">1H 00:00</div>
+    </div>
+
+    <button class="pause-btn" onclick="pauseMatch()">⏸</button>
+
+    <div id="active-player-tag" class="active-player-tag">10 MESSI</div>
+
+    <!-- عصا التحكم اليسرى + الأزرار الثلاثة اليمنى -->
+    <div id="player-controls">
+        <div id="joystick-zone">
+            <div id="joystick-base"></div>
+            <div id="joystick-stick"></div>
+        </div>
+
+        <div id="shoot-power-bar"><div id="shoot-power-fill"></div></div>
+
+        <div class="action-cluster">
+            <button id="btn-shoot" class="act-btn">SHOOT<span style="font-size:0.65rem">تسديد</span></button>
+            <button id="btn-pass" class="act-btn">PASS<span style="font-size:0.65rem">تمرير</span></button>
+            <button id="btn-press" class="act-btn">PRESS<span style="font-size:0.72rem">ضغط</span></button>
+        </div>
+    </div>
+
+    <!-- شريط المدير الفني أثناء المباراة -->
+    <div id="manager-bar">
+        <span style="color:var(--gold); font-weight:900; font-size:0.82rem;">📋 المدير الفني:</span>
+        <select id="live-tac-style" style="width:auto; padding:4px 8px; font-size:0.8rem;" onchange="changeLiveTactic(this.value)">
+            <option value="balanced">متوازن</option>
+            <option value="attack">هجوم شامل</option>
+            <option value="defend">تكتل دفاعي</option>
+            <option value="highpress">ضغط عالٍ</option>
+            <option value="counter">مرتدات سريعة</option>
+        </select>
+        <button class="btn btn-gold" style="padding:4px 10px; font-size:0.8rem;" onclick="pauseMatch(true)">تبديلات وخطة 🔄</button>
+    </div>
+</div>
+
+<!-- لافتة الهدف -->
+<div id="goal-banner"><div class="goal-text">⚽ GOOOAL!</div></div>
+
+<!-- نافذة الإيقاف المؤقت -->
+<div id="pause-modal" class="modal-overlay">
+    <div class="modal-card">
+        <h2 style="color:var(--gold); margin-bottom:10px;">⏸ إيقاف المباراة</h2>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+            <button class="btn btn-green" onclick="resumeMatch()">استكمال المباراة ▶</button>
+            <button class="btn btn-blue" onclick="openInMatchTactics()">📋 التبديلات وتغيير الخطة</button>
+            <button class="btn btn-red" onclick="quitMatch()">إنهاء والخروج للقائمة</button>
+        </div>
+    </div>
+</div>
+
+<!-- نافذة نهاية المباراة والإحصائيات -->
+<div id="postmatch-modal" class="modal-overlay">
+    <div class="modal-card">
+        <h2 id="pm-title" style="color:var(--gold); margin-bottom:4px;">نهاية المباراة</h2>
+        <div id="pm-score" style="font-size:1.9rem; font-weight:900; margin:6px 0;">2 - 1</div>
+        <div id="pm-stats" style="text-align:right; font-size:0.88rem; margin:10px 0; background:rgba(255,255,255,0.04); padding:10px; border-radius:10px;"></div>
+        <div id="pm-actions" style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;"></div>
+    </div>
+</div>
+
+<script>
+/**
+ * ============================================================================
+ * 1. محاولة قفل الشاشة بالوضع الأفقي Landscape + تحميل Three.js السريع
+ * ============================================================================
+ */
+function tryLockLandscape() {
+    try {
+        if (screen.orientation && screen.orientation.lock) {
+            screen.orientation.lock('landscape').catch(() => {});
+        }
+    } catch (e) {}
+}
+window.addEventListener('pointerdown', tryLockLandscape, { once: true });
+
+let useThreeJS = false;
+let scene, camera, renderer, ballMesh, stadiumGroup;
+let playerMeshes = [];
+let crowdPoints = null;
+
+const THREE_FALLBACKS = [
+    'https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js',
+    'https://unpkg.com/three@0.128.0/build/three.min.js'
+];
+let fallbackIdx = 0;
+
+function checkThreeAndBoot() {
+    if (window.THREE) {
+        try {
+            initThreeScene();
+            useThreeJS = true;
+            document.getElementById('cdn-warning').style.display = 'none';
+            return;
+        } catch (e) {
+            console.warn('WebGL init error, using 2.5D fallback:', e);
+        }
+    }
+    tryLoadFallbackThree();
+}
+
+function tryLoadFallbackThree() {
+    if (fallbackIdx >= THREE_FALLBACKS.length) {
+        document.getElementById('cdn-warning').style.display = 'flex';
+        return;
+    }
+    const s = document.createElement('script');
+    s.src = THREE_FALLBACKS[fallbackIdx++];
+    s.async = true;
+    const t = setTimeout(() => { s.remove(); tryLoadFallbackThree(); }, 2500);
+    s.onload = () => {
+        clearTimeout(t);
+        if (window.THREE) {
+            try {
+                initThreeScene();
+                useThreeJS = true;
+                document.getElementById('cdn-warning').style.display = 'none';
+            } catch (e) {}
+        }
+    };
+    s.onerror = () => { clearTimeout(t); tryLoadFallbackThree(); };
+    document.head.appendChild(s);
+}
+
+function retryLoadThree() {
+    fallbackIdx = 0;
+    document.getElementById('cdn-warning').style.display = 'none';
+    tryLoadFallbackThree();
+}
+
+/**
+ * ============================================================================
+ * 2. قاعدة بيانات المنتخبات الـ 48 المشاركة في كأس العالم 2026 بقوائم حقيقية
+ * ============================================================================
+ */
+const TEAMS_48 = [
+    { id:'ARG', name:'الأرجنتين', flag:'🇦🇷', c1:'#67b7dc', c2:'#ffffff', gk:'#10b981', ovr:90,
+      players:['E. Martinez','N. Molina','C. Romero','L. Martinez','N. Tagliafico','R. De Paul','E. Fernandez','A. Mac Allister','L. Messi','J. Alvarez','L. Martinez','G. Rulli','G. Pezzella','L. Paredes','A. Garnacho','N. Gonzalez'] },
+    { id:'FRA', name:'فرنسا', flag:'🇫🇷', c1:'#1e3a8a', c2:'#ffffff', gk:'#f59e0b', ovr:90,
+      players:['M. Maignan','J. Kounde','W. Saliba','D. Upamecano','T. Hernandez','A. Tchouameni','E. Camavinga','A. Griezmann','O. Dembele','K. Mbappe','M. Thuram','B. Samba','I. Konate','N. Kante','B. Barcola','R. Kolo Muani'] },
+    { id:'BRA', name:'البرازيل', flag:'🇧🇷', c1:'#facc15', c2:'#1d4ed8', gk:'#111827', ovr:89,
+      players:['Alisson','Danilo','Marquinhos','Gabriel','Wendell','B. Guimaraes','L. Paqueta','Rodrygo','Raphinha','Vinicius Jr','Endrick','Ederson','E. Militao','Douglas Luiz','Savinho','G. Martinelli'] },
+    { id:'ESP', name:'إسبانيا', flag:'🇪🇸', c1:'#dc2626', c2:'#1e3a8a', gk:'#06b6d4', ovr:90,
+      players:['U. Simon','D. Carvajal','R. Le Normand','A. Laporte','M. Cucurella','Rodri','F. Ruiz','Dani Olmo','L. Yamal','A. Morata','N. Williams','D. Raya','D. Vivian','Pedri','F. Torres','M. Oyarzabal'] },
+    { id:'ENG', name:'إنجلترا', flag:'🏴󠁧󠁢󠁥󠁮󠁧󠁿', c1:'#ffffff', c2:'#1e3a8a', gk:'#16a34a', ovr:89,
+      players:['J. Pickford','K. Walker','J. Stones','M. Guehi','L. Shaw','D. Rice','J. Bellingham','P. Foden','B. Saka','H. Kane','C. Palmer','A. Ramsdale','E. Konsa','T. Alexander-Arnold','A. Gordon','O. Watkins'] },
+    { id:'GER', name:'ألمانيا', flag:'🇩🇪', c1:'#ffffff', c2:'#111827', gk:'#ec4899', ovr:88,
+      players:['M. ter Stegen','J. Kimmich','A. Rudiger','J. Tah','M. Mittelstadt','R. Andrich','P. Gross','J. Musiala','F. Wirtz','K. Havertz','L. Sane','O. Baumann','N. Schlotterbeck','A. Pavlovic','S. Gnabry','N. Fullkrug'] },
+    { id:'POR', name:'البرتغال', flag:'🇵🇹', c1:'#b91c1c', c2:'#15803d', gk:'#facc15', ovr:88,
+      players:['D. Costa','D. Dalot','R. Dias','G. Inacio','N. Mendes','Vitinha','J. Palhinha','B. Fernandes','B. Silva','C. Ronaldo','R. Leao','J. Sa','A. Silva','J. Neves','P. Neto','D. Jota'] },
+    { id:'NED', name:'هولندا', flag:'🇳🇱', c1:'#f97316', c2:'#ffffff', gk:'#1e293b', ovr:86,
+      players:['B. Verbruggen','D. Dumfries','V. van Dijk','S. de Vrij','N. Ake','J. Schouten','T. Reijnders','X. Simons','C. Gakpo','M. Depay','D. Malen','M. Flekken','M. de Ligt','R. Gravenberch','J. Frimpong','W. Weghorst'] },
+    { id:'ITA', name:'إيطاليا', flag:'🇮🇹', c1:'#2563eb', c2:'#ffffff', gk:'#9333ea', ovr:86,
+      players:['G. Donnarumma','G. Di Lorenzo','A. Bastoni','R. Calafiori','F. Dimarco','Jorginho','N. Barella','D. Frattesi','F. Chiesa','G. Scamacca','L. Pellegrini','G. Vicario','G. Mancini','S. Tonali','M. Retegui','G. Raspadori'] },
+    { id:'BEL', name:'بلجيكا', flag:'🇧🇪', c1:'#dc2626', c2:'#111827', gk:'#facc15', ovr:85,
+      players:['K. Casteels','T. Castagne','W. Faes','J. Vertonghen','A. Theate','A. Onana','Y. Tielemans','K. De Bruyne','J. Doku','R. Lukaku','L. Trossard','M. Sels','Z. Debast','O. Mangala','J. Bakayoko','L. Openda'] },
+    { id:'CRO', name:'كرواتيا', flag:'🇭🇷', c1:'#ef4444', c2:'#ffffff', gk:'#0284c7', ovr:84,
+      players:['D. Livakovic','J. Stanisic','J. Sutalo','J. Gvardiol','B. Sosa','L. Modric','M. Kovacic','M. Brozovic','L. Majer','A. Kramaric','I. Perisic','I. Ivusic','M. Pongracic','M. Pasalic','L. Sucic','A. Budimir'] },
+    { id:'URU', name:'أوروغواي', flag:'🇺🇾', c1:'#38bdf8', c2:'#111827', gk:'#ef4444', ovr:85,
+      players:['S. Rochet','N. Nandez','R. Araujo','J. Gimenez','M. Olivera','M. Ugarte','F. Valverde','N. de la Cruz','F. Pellistri','D. Nunez','M. Araujo','S. Mele','S. Caceres','R. Bentancur','G. de Arrascaeta','L. Suarez'] },
+    { id:'COL', name:'كولومبيا', flag:'🇨🇴', c1:'#facc15', c2:'#1e3a8a', gk:'#10b981', ovr:84,
+      players:['C. Vargas','D. Munoz','D. Sanchez','C. Cuesta','J. Mojica','J. Lerma','R. Rios','J. Rodriguez','J. Arias','J. Cordoba','L. Diaz','D. Ospina','Y. Mina','M. Uribe','L. Sinisterra','R. Borre'] },
+    { id:'USA', name:'أمريكا', flag:'🇺🇸', c1:'#ffffff', c2:'#1e3a8a', gk:'#f97316', ovr:82,
+      players:['M. Turner','S. Dest','C. Richards','T. Ream','A. Robinson','T. Adams','W. McKennie','Y. Musah','C. Pulisic','F. Balogun','T. Weah','E. Horvath','C. Carter-Vickers','G. Reyna','B. Aaronson','R. Pepi'] },
+    { id:'MEX', name:'المكسيك', flag:'🇲🇽', c1:'#15803d', c2:'#ffffff', gk:'#ef4444', ovr:81,
+      players:['G. Ochoa','J. Sanchez','C. Montes','J. Vasquez','G. Arteaga','E. Alvarez','L. Chavez','C. Rodriguez','U. Antuna','S. Gimenez','H. Lozano','L. Malagon','I. Reyes','O. Pineda','J. Quinones','H. Martin'] },
+    { id:'CAN', name:'كندا', flag:'🇨🇦', c1:'#dc2626', c2:'#ffffff', gk:'#1e293b', ovr:80,
+      players:['M. Crepeau','A. Johnston','M. Bombito','D. Cornelius','A. Davies','S. Eustaquio','I. Kone','T. Buchanan','J. David','C. Larin','L. Millar','D. St. Clair','K. Miller','J. Osorio','J. Shaffelburg','T. Oluwaseyi'] },
+    { id:'MAR', name:'المغرب', flag:'🇲🇦', c1:'#dc2626', c2:'#15803d', gk:'#facc15', ovr:84,
+      players:['Y. Bounou','A. Hakimi','N. Aguerd','R. Saiss','N. Mazraoui','S. Amrabat','A. Ounahi','B. Diaz','H. Ziyech','Y. En-Nesyri','A. Ezzalzouli','M. Mohamedi','C. Riad','B. El Khannouss','A. Adli','S. Rahimi'] },
+    { id:'EGY', name:'مصر', flag:'🇪🇬', c1:'#dc2626', c2:'#ffffff', gk:'#10b981', ovr:81,
+      players:['M. El Shenawy','M. Hany','M. Abdelmonem','A. Hegazi','M. Hamdy','M. Elneny','H. Fathy','E. Ashour','M. Salah','M. Mohamed','O. Marmoush','M. Abou Gabal','R. Rabia','A. Sayed Zizo','Trezeguet','I. Adel'] },
+    { id:'SEN', name:'السنغال', flag:'🇸🇳', c1:'#ffffff', c2:'#16a34a', gk:'#f59e0b', ovr:82,
+      players:['E. Mendy','Y. Sabaly','K. Koulibaly','M. Niakhate','I. Jakobs','I. Gueye','P. Sarr','P. Gueye','I. Sarr','N. Jackson','S. Mane','M. Diaw','A. Diallo','L. Camara','H. Diallo','B. Dia'] },
+    { id:'NGA', name:'نيجيريا', flag:'🇳🇬', c1:'#16a34a', c2:'#ffffff', gk:'#111827', ovr:82,
+      players:['S. Nwabali','O. Aina','W. Troost-Ekong','C. Bassey','Z. Sanusi','W. Ndidi','A. Iwobi','F. Onyeka','S. Chukwueze','V. Osimhen','A. Lookman','F. Uzoho','S. Ajayi','R. Onyedika','M. Simon','V. Boniface'] },
+    { id:'ALG', name:'الجزائر', flag:'🇩🇿', c1:'#ffffff', c2:'#16a34a', gk:'#0284c7', ovr:81,
+      players:['A. Mandrea','Y. Atal','A. Mandi','R. Bensebaini','R. Ait-Nouri','I. Bennacer','N. Bentaleb','H. Aouar','R. Mahrez','B. Bounedjah','A. Gouiri','M. Zeghba','M. Tougai','R. Zerrouki','S. Benrahma','M. Amoura'] },
+    { id:'TUN', name:'تونس', flag:'🇹🇳', c1:'#dc2626', c2:'#ffffff', gk:'#1e293b', ovr:79,
+      players:['B. Ben Said','W. Kechrida','M. Talbi','Y. Meriah','A. Abdi','E. Skhiri','A. Laidouni','M. Ben Romdhane','E. Achouri','Y. Msakni','S. Jaziri','A. Dahmen','D. Bronn','H. Mejbri','N. Sliti','H. Jouini'] },
+    { id:'JPN', name:'اليابان', flag:'🇯🇵', c1:'#1e3a8a', c2:'#ffffff', gk:'#ef4444', ovr:83,
+      players:['Z. Suzuki','T. Tomiyasu','K. Itakura','S. Taniguchi','H. Ito','W. Endo','H. Morita','T. Kubo','J. Ito','A. Ueda','K. Mitoma','D. Maekawa','Y. Sugawara','R. Hatate','T. Minamino','D. Maeda'] },
+    { id:'KOR', name:'كوريا الجنوبية', flag:'🇰🇷', c1:'#dc2626', c2:'#111827', gk:'#10b981', ovr:82,
+      players:['H. Jo','Y. Seol','M. Kim','Y. Kim','J. Kim','I. Hwang','Y. Park','K. Lee','J. Lee','H. Hwang','H. Son','S. Bum-keun','S. Jung','W. Jeong','G. Cho','M. Joo'] },
+    { id:'KSA', name:'السعودية', flag:'🇸🇦', c1:'#15803d', c2:'#ffffff', gk:'#f59e0b', ovr:79,
+      players:['M. Al-Owais','S. Abdulhamid','A. Al-Bulaihi','H. Tambakti','Y. Al-Shahrani','M. Kanno','A. Al-Malki','S. Al-Najei','F. Al-Buraikan','S. Al-Shehri','S. Al-Dawsari','A. Al-Kassar','A. Lajami','N. Al-Dawsari','A. Ghareeb','A. Radif'] },
+    { id:'IRN', name:'إيران', flag:'🇮🇷', c1:'#ffffff', c2:'#dc2626', gk:'#1e293b', ovr:80,
+      players:['A. Beiranvand','R. Rezaeian','H. Kanaani','S. Khalilzadeh','M. Mohammadi','S. Ezatolahi','S. Ghoddos','A. Jahanbakhsh','M. Taremi','S. Azmoun','M. Mohebi','P. Niazmand','M. Hosseini','O. Ebrahimi','A. Gholizadeh','K. Ansarifard'] },
+    { id:'AUS', name:'أستراليا', flag:'🇦🇺', c1:'#facc15', c2:'#15803d', gk:'#1e3a8a', ovr:79,
+      players:['M. Ryan','N. Atkinson','H. Souttar','K. Rowles','A. Behich','J. Irvine','K. Baccus','R. McGree','M. Boyle','M. Duke','C. Goodwin','J. Gauci','C. Burgess','C. Metcalfe','A. Hrustic','N. Irankunda'] },
+    { id:'QAT', name:'قطر', flag:'🇶🇦', c1:'#7f1d1d', c2:'#ffffff', gk:'#10b981', ovr:78,
+      players:['M. Barsham','P. Miguel','B. Khoukhi','L. Mendes','H. Ahmed','A. Fathi','J. Gaber','H. Al-Haydos','A. Afif','A. Ali','Y. Abdurisag','S. Al-Sheeb','T. Salman','A. Hatem','I. Mohammad','A. Alaaeldin'] },
+    { id:'SUI', name:'سويسرا', flag:'🇨🇭', c1:'#dc2626', c2:'#ffffff', gk:'#111827', ovr:83,
+      players:['Y. Sommer','S. Widmer','M. Akanji','F. Schar','R. Rodriguez','G. Xhaka','R. Freuler','D. Ndoye','R. Vargas','B. Embolo','Z. Amdouni','G. Kobel','N. Elvedi','D. Zakaria','X. Shaqiri','N. Okafor'] },
+    { id:'DEN', name:'الدنمارك', flag:'🇩🇰', c1:'#dc2626', c2:'#ffffff', gk:'#0284c7', ovr:83,
+      players:['K. Schmeichel','A. Bah','J. Andersen','A. Christensen','J. Maehle','P. Hojbjerg','M. Hjulmand','C. Eriksen','A. Skov Olsen','R. Hojlund','J. Wind','M. Hermansen','J. Vestergaard','T. Delaney','M. Damsgaard','Y. Poulsen'] },
+    { id:'AUT', name:'النمسا', flag:'🇦🇹', c1:'#dc2626', c2:'#ffffff', gk:'#10b981', ovr:82,
+      players:['P. Pentz','S. Posch','K. Danso','P. Lienhart','P. Mwene','N. Seiwald','K. Laimer','C. Baumgartner','M. Sabitzer','M. Gregoritsch','M. Arnautovic','H. Lindner','M. Wober','F. Grillitsch','R. Schmid','P. Wimmer'] },
+    { id:'SRB', name:'صربيا', flag:'🇷🇸', c1:'#b91c1c', c2:'#1e3a8a', gk:'#facc15', ovr:81,
+      players:['P. Rajkovic','N. Milenkovic','M. Veljkovic','S. Pavlovic','A. Zivkovic','S. Lukic','N. Gudelj','F. Kostic','D. Tadic','D. Vlahovic','A. Mitrovic','V. Milinkovic-Savic','S. Babic','S. Milinkovic-Savic','L. Samardzic','L. Jovic'] },
+    { id:'POL', name:'بولندا', flag:'🇵🇱', c1:'#ffffff', c2:'#dc2626', gk:'#16a34a', ovr:81,
+      players:['W. Szczesny','J. Bednarek','P. Dawidowicz','J. Kiwior','P. Frankowski','P. Zielinski','J. Moder','N. Zalewski','S. Szymanski','R. Lewandowski','K. Swiderski','L. Skorupski','B. Salamon','T. Romanczuk','K. Urbanski','A. Buksa'] },
+    { id:'UKR', name:'أوكرانيا', flag:'🇺🇦', c1:'#facc15', c2:'#2563eb', gk:'#111827', ovr:81,
+      players:['A. Lunin','Y. Konoplya','I. Zabarnyi','M. Matviyenko','V. Mykolenko','O. Zinchenko','T. Stepanenko','H. Sudakov','V. Tsyhankov','A. Dovbyk','M. Mudryk','A. Trubin','O. Svatok','M. Shaparenko','A. Yarmolenko','R. Yaremchuk'] },
+    { id:'TUR', name:'تركيا', flag:'🇹🇷', c1:'#dc2626', c2:'#ffffff', gk:'#10b981', ovr:82,
+      players:['M. Gunok','M. Muldur','M. Demiral','A. Bardakci','F. Kadioglu','H. Calhanoglu','I. Yuksek','A. Guler','O. Kokcu','B. Yilmaz','K. Yildiz','U. Cakir','S. Akaydin','S. Ozcan','I. Kahveci','C. Tosun'] },
+    { id:'SWE', name:'السويد', flag:'🇸🇪', c1:'#facc15', c2:'#1d4ed8', gk:'#111827', ovr:81,
+      players:['R. Olsen','E. Krafth','V. Lindelof','I. Hien','L. Augustinsson','J. Cajuste','H. Larsson','D. Kulusevski','E. Forsberg','A. Isak','V. Gyokeres','V. Johansson','C. Starfelt','M. Svanberg','A. Elanga','R. Quaison'] },
+    { id:'NOR', name:'النرويج', flag:'🇳🇴', c1:'#dc2626', c2:'#1e3a8a', gk:'#10b981', ovr:82,
+      players:['O. Nyland','J. Ryerson','K. Ajer','L. Ostigard','D. Wolfe','S. Berge','P. Berg','M. Odegaard','O. Bobb','E. Haaland','A. Sorloth','M. Dyngeland','A. Hanche-Olsen','M. Thorsby','A. Nusa','J. Strand Larsen'] },
+    { id:'SCO', name:'اسكتلندا', flag:'🏴󠁧󠁢󠁳󠁣󠁴󠁿', c1:'#1e3a8a', c2:'#ffffff', gk:'#f59e0b', ovr:79,
+      players:['A. Gunn','A. Ralston','J. Hendry','K. Tierney','A. Robertson','B. Gilmour','C. McGregor','S. McTominay','J. McGinn','R. Christie','C. Adams','L. Kelly','S. McKenna','K. McLean','S. Armstrong','L. Shankland'] },
+    { id:'ECU', name:'الإكوادور', flag:'🇪🇨', c1:'#facc15', c2:'#1e3a8a', gk:'#ef4444', ovr:81,
+      players:['A. Dominguez','A. Preciado','F. Torres','W. Pacho','P. Hincapie','M. Caicedo','A. Franco','C. Gruezo','K. Paez','E. Valencia','J. Sarmiento','H. Galindez','P. Ortis','J. Cifuentes','A. Mena','K. Rodriguez'] },
+    { id:'PER', name:'بيرو', flag:'🇵🇪', c1:'#ffffff', c2:'#dc2626', gk:'#10b981', ovr:78,
+      players:['P. Gallese','L. Advincula','C. Zambrano','A. Callens','M. Trauco','R. Tapia','W. Cartagena','P. Quispe','A. Carrillo','G. Lapadula','B. Reyna','C. Caceda','M. Araujo','S. Pena','E. Flores','P. Guerrero'] },
+    { id:'CHI', name:'تشيلي', flag:'🇨🇱', c1:'#dc2626', c2:'#1e3a8a', gk:'#facc15', ovr:79,
+      players:['C. Bravo','M. Isla','P. Diaz','G. Maripan','G. Suazo','E. Pulgar','R. Echeverria','D. Valdes','V. Davila','E. Vargas','A. Sanchez','B. Cortes','I. Lichnovsky','M. Nunez','D. Osorio','B. Brereton'] },
+    { id:'VEN', name:'فنزويلا', flag:'🇻🇪', c1:'#7f1d1d', c2:'#ffffff', gk:'#0284c7', ovr:79,
+      players:['R. Romo','J. Aramburu','N. Ferraresi','Y. Osorio','M. Navarro','J. Martinez','Y. Herrera','T. Segovia','Y. Soteldo','S. Rondon','D. Machis','J. Graterol','W. Angel','T. Rincon','E. Bello','J. Cadiz'] },
+    { id:'PAR', name:'باراغواي', flag:'🇵🇾', c1:'#dc2626', c2:'#ffffff', gk:'#111827', ovr:78,
+      players:['C. Coronel','G. Velazquez','G. Gomez','O. Alderete','J. Alonso','A. Cubas','D. Bobadilla','M. Almiron','J. Enciso','A. Sanabria','R. Sosa','R. Fernandez','F. Balbuena','M. Villasanti','A. Romero','A. Bareiro'] },
+    { id:'CRC', name:'كوستاريكا', flag:'🇨🇷', c1:'#dc2626', c2:'#1e3a8a', gk:'#10b981', ovr:76,
+      players:['P. Sequeira','H. Quiros','J. Mitchell','J. Vargas','F. Calvo','O. Galo','B. Aguilera','J. Campbell','A. Zamora','M. Ugalde','W. Madrigal','K. Chamorro','J. Cascante','J. Brenes','J. Alcocer','A. Contreras'] },
+    { id:'PAN', name:'بنما', flag:'🇵🇦', c1:'#dc2626', c2:'#ffffff', gk:'#facc15', ovr:76,
+      players:['O. Mosquera','M. Murillo','E. Farina','J. Cordoba','E. Davis','A. Carrasquilla','C. Martinez','E. Barcenas','J. Rodriguez','J. Fajardo','I. Diaz','L. Mejia','R. Miller','A. Godoy','C. Harvey','E. Guerrero'] },
+    { id:'CIV', name:'ساحل العاج', flag:'🇨🇮', c1:'#f97316', c2:'#16a34a', gk:'#1e293b', ovr:81,
+      players:['Y. Fofana','W. Singo','E. Ndicka','O. Kossounou','G. Konan','F. Kessie','J. Seri','S. Fofana','N. Pepe','S. Haller','S. Adingra','B. Sangare','W. Boly','I. Sangare','M. Gradel','K. Krasso'] },
+    { id:'GHA', name:'غانا', flag:'🇬🇭', c1:'#ffffff', c2:'#facc15', gk:'#dc2626', ovr:79,
+      players:['L. Ati-Zigi','T. Lamptey','A. Djiku','M. Salisu','G. Mensah','T. Partey','S. Abdul Samed','M. Kudus','J. Ayew','I. Williams','A. Semenyo','J. Wollacott','D. Amartey','E. Owusu','O. Bukari','E. Nuamah'] },
+    { id:'NZL', name:'نيوزيلندا', flag:'🇳🇿', c1:'#111827', c2:'#ffffff', gk:'#10b981', ovr:75,
+      players:['M. Crocombe','T. Payne','M. Boxall','N. Pijnaker','L. Cacace','J. Bell','M. Stamenic','S. Singh','M. Garbett','C. Wood','B. Waine','O. Sail','T. Smith','C. Lewis','E. Just','K. Barbarouses'] }
+];
+
+const FORMATIONS = {
+    '4-3-3': [
+        {role:'GK', x:50, y:91},
+        {role:'LB', x:16, y:74}, {role:'CB', x:38, y:77}, {role:'CB', x:62, y:77}, {role:'RB', x:84, y:74},
+        {role:'CM', x:28, y:53}, {role:'CDM', x:50, y:58}, {role:'CM', x:72, y:53},
+        {role:'LW', x:18, y:26}, {role:'ST', x:50, y:20}, {role:'RW', x:82, y:26}
+    ],
+    '4-4-2': [
+        {role:'GK', x:50, y:91},
+        {role:'LB', x:16, y:74}, {role:'CB', x:38, y:77}, {role:'CB', x:62, y:77}, {role:'RB', x:84, y:74},
+        {role:'LM', x:16, y:48}, {role:'CM', x:38, y:52}, {role:'CM', x:62, y:52}, {role:'RM', x:84, y:48},
+        {role:'ST', x:36, y:22}, {role:'ST', x:64, y:22}
+    ],
+    '4-2-3-1': [
+        {role:'GK', x:50, y:91},
+        {role:'LB', x:16, y:74}, {role:'CB', x:38, y:77}, {role:'CB', x:62, y:77}, {role:'RB', x:84, y:74},
+        {role:'CDM', x:36, y:58}, {role:'CDM', x:64, y:58},
+        {role:'LAM', x:20, y:36}, {role:'CAM', x:50, y:34}, {role:'RAM', x:80, y:36},
+        {role:'ST', x:50, y:18}
+    ],
+    '3-5-2': [
+        {role:'GK', x:50, y:91},
+        {role:'CB', x:26, y:76}, {role:'CB', x:50, y:78}, {role:'CB', x:74, y:76},
+        {role:'LWB', x:12, y:50}, {role:'CM', x:34, y:54}, {role:'CDM', x:50, y:60}, {role:'CM', x:66, y:54}, {role:'RWB', x:88, y:50},
+        {role:'ST', x:36, y:22}, {role:'ST', x:64, y:22}
+    ],
+    '3-4-3': [
+        {role:'GK', x:50, y:91},
+        {role:'CB', x:26, y:76}, {role:'CB', x:50, y:78}, {role:'CB', x:74, y:76},
+        {role:'LM', x:14, y:50}, {role:'CM', x:38, y:54}, {role:'CM', x:62, y:54}, {role:'RM', x:86, y:50},
+        {role:'LW', x:20, y:24}, {role:'ST', x:50, y:19}, {role:'RW', x:80, y:24}
+    ],
+    '5-3-2': [
+        {role:'GK', x:50, y:91},
+        {role:'LWB', x:12, y:68}, {role:'CB', x:30, y:76}, {role:'CB', x:50, y:78}, {role:'CB', x:70, y:76}, {role:'RWB', x:88, y:68},
+        {role:'CM', x:30, y:50}, {role:'CM', x:50, y:54}, {role:'CM', x:70, y:50},
+        {role:'ST', x:36, y:22}, {role:'ST', x:64, y:22}
+    ],
+    '4-1-4-1': [
+        {role:'GK', x:50, y:91},
+        {role:'LB', x:16, y:74}, {role:'CB', x:38, y:77}, {role:'CB', x:62, y:77}, {role:'RB', x:84, y:74},
+        {role:'CDM', x:50, y:62},
+        {role:'LM', x:15, y:42}, {role:'CM', x:38, y:44}, {role:'CM', x:62, y:44}, {role:'RM', x:85, y:42},
+        {role:'ST', x:50, y:19}
+    ]
+};
+
+/**
+ * ============================================================================
+ * 3. الحالة العامة للعبة والبطولة والتكتيك
+ * ============================================================================
+ */
+const gameState = {
+    mode: 'freeplay',
+    fpHomeId: 'ARG',
+    fpAwayId: 'FRA',
+    wcSubmode: 'player',
+    wcUserTeamId: 'ARG',
+    tactics: {
+        formation: '4-3-3',
+        style: 'balanced',
+        defLine: 50,
+        tempo: 60,
+        lineupIndices: [0,1,2,3,4,5,6,7,8,9,10],
+        captainIdx: 8,
+        takerIdx: 8
+    },
+    wcSave: null
+};
+
+function getTeam(id) {
+    return TEAMS_48.find(t => t.id === id) || TEAMS_48[0];
+}
+
+function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    if (id) document.getElementById(id).classList.add('active');
+}
+
+/**
+ * ============================================================================
+ * 4. محرك Three.js ثلاثي الأبعاد + رؤية الملعب بالكامل Full Pitch Camera
+ * ============================================================================
+ */
+const PITCH_W = 68;
+const PITCH_L = 105;
+
+function createPitchTexture() {
+    const c = document.createElement('canvas');
+    c.width = 1024;
+    c.height = 1536;
+    const ctx = c.getContext('2d');
+
+    const stripes = 16;
+    const sh = c.height / stripes;
+    for (let i = 0; i < stripes; i++) {
+        ctx.fillStyle = i % 2 === 0 ? '#1b7a38' : '#16682f';
+        ctx.fillRect(0, i * sh, c.width, sh);
+    }
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.92)';
+    ctx.lineWidth = 8;
+    const pad = 42;
+    const w = c.width - pad * 2;
+    const h = c.height - pad * 2;
+
+    ctx.strokeRect(pad, pad, w, h);
+    ctx.beginPath();
+    ctx.moveTo(pad, c.height / 2);
+    ctx.lineTo(c.width - pad, c.height / 2);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(c.width / 2, c.height / 2, 125, 0, Math.PI * 2);
+    ctx.stroke();
+
+    const boxW = w * 0.6;
+    const boxH = h * 0.16;
+    ctx.strokeRect((c.width - boxW) / 2, pad, boxW, boxH);
+    ctx.strokeRect((c.width - boxW) / 2, c.height - pad - boxH, boxW, boxH);
+
+    const sBoxW = w * 0.28;
+    const sBoxH = h * 0.055;
+    ctx.strokeRect((c.width - sBoxW) / 2, pad, sBoxW, sBoxH);
+    ctx.strokeRect((c.width - sBoxW) / 2, c.height - pad - sBoxH, sBoxW, sBoxH);
+
+    const tex = new THREE.CanvasTexture(c);
+    tex.anisotropy = 4;
+    return tex;
+}
+
+function initThreeScene() {
+    const canvas = document.getElementById('game-canvas');
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x071224);
+    scene.fog = new THREE.FogExp2(0x071224, 0.0022);
+
+    // زاوية رؤية متوازنة تكبّر الملعب واللاعبين على الشاشة مع إبقاء الأطراف والمرميين واضحين
+    camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.5, 500);
+    camera.position.set(58, 41, 0);
+    camera.lookAt(0, 0, 0);
+
+    renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    const hemi = new THREE.HemisphereLight(0xdbeafe, 0x0f3d1e, 0.88);
+    scene.add(hemi);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.1);
+    dirLight.position.set(45, 75, 35);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 1024;
+    dirLight.shadow.mapSize.height = 1024;
+    const d = 65;
+    dirLight.shadow.camera.left = -d;
+    dirLight.shadow.camera.right = d;
+    dirLight.shadow.camera.top = d;
+    dirLight.shadow.camera.bottom = -d;
+    scene.add(dirLight);
+
+    stadiumGroup = new THREE.Group();
+    scene.add(stadiumGroup);
+
+    const pitchGeo = new THREE.PlaneGeometry(PITCH_W + 12, PITCH_L + 12);
+    const pitchMat = new THREE.MeshStandardMaterial({ map: createPitchTexture(), roughness: 0.85 });
+    const pitchMesh = new THREE.Mesh(pitchGeo, pitchMat);
+    pitchMesh.rotation.x = -Math.PI / 2;
+    pitchMesh.receiveShadow = true;
+    stadiumGroup.add(pitchMesh);
+
+    buildGoal3D(-PITCH_L / 2);
+    buildGoal3D(PITCH_L / 2);
+    buildStandsAndCrowd();
+
+    const ballGeo = new THREE.SphereGeometry(0.55, 20, 20);
+    const ballMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.35 });
+    ballMesh = new THREE.Mesh(ballGeo, ballMat);
+    ballMesh.castShadow = true;
+    scene.add(ballMesh);
+
+    window.addEventListener('resize', () => {
+        if (!renderer || !camera) return;
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+}
+
+function buildGoal3D(zPos) {
+    const g = new THREE.Group();
+    const postMat = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.3, roughness: 0.2 });
+    const gw = 7.32, gh = 2.44, gd = 2.2;
+    const dir = zPos < 0 ? -1 : 1;
+
+    const pLeft = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, gh, 10), postMat);
+    pLeft.position.set(-gw / 2, gh / 2, 0);
+    const pRight = pLeft.clone();
+    pRight.position.x = gw / 2;
+
+    const crossbar = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, gw, 10), postMat);
+    crossbar.rotation.z = Math.PI / 2;
+    crossbar.position.set(0, gh, 0);
+
+    const netMat = new THREE.MeshBasicMaterial({ color: 0xe2e8f0, wireframe: true, transparent: true, opacity: 0.45 });
+    const netBox = new THREE.Mesh(new THREE.BoxGeometry(gw, gh, gd), netMat);
+    netBox.position.set(0, gh / 2, dir * (gd / 2));
+
+    g.add(pLeft, pRight, crossbar, netBox);
+    g.position.set(0, 0, zPos);
+    stadiumGroup.add(g);
+}
+
+function buildStandsAndCrowd() {
+    const standMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.9 });
+    const s1 = new THREE.Mesh(new THREE.BoxGeometry(14, 14, PITCH_L + 30), standMat);
+    s1.position.set(-PITCH_W / 2 - 13, 7, 0);
+    const s2 = s1.clone();
+    s2.position.x = PITCH_W / 2 + 13;
+
+    const s3 = new THREE.Mesh(new THREE.BoxGeometry(PITCH_W + 40, 14, 14), standMat);
+    s3.position.set(0, 7, -PITCH_L / 2 - 13);
+    const s4 = s3.clone();
+    s4.position.z = PITCH_L / 2 + 13;
+    stadiumGroup.add(s1, s2, s3, s4);
+
+    const count = 1600;
+    const pos = new Float32Array(count * 3);
+    const col = new Float32Array(count * 3);
+    const palette = [new THREE.Color(0xef4444), new THREE.Color(0xfacc15), new THREE.Color(0x3b82f6), new THREE.Color(0xffffff), new THREE.Color(0x10b981)];
+
+    for (let i = 0; i < count; i++) {
+        const side = i % 4;
+        let x = 0, z = 0, y = 4 + Math.random() * 10;
+        if (side === 0) { x = -PITCH_W / 2 - 7 - Math.random() * 10; z = (Math.random() - 0.5) * (PITCH_L + 20); }
+        if (side === 1) { x = PITCH_W / 2 + 7 + Math.random() * 10; z = (Math.random() - 0.5) * (PITCH_L + 20); }
+        if (side === 2) { z = -PITCH_L / 2 - 7 - Math.random() * 10; x = (Math.random() - 0.5) * (PITCH_W + 20); }
+        if (side === 3) { z = PITCH_L / 2 + 7 + Math.random() * 10; x = (Math.random() - 0.5) * (PITCH_W + 20); }
+        pos[i * 3] = x; pos[i * 3 + 1] = y; pos[i * 3 + 2] = z;
+        const c = palette[i % palette.length];
+        col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    const mat = new THREE.PointsMaterial({ size: 0.9, vertexColors: true });
+    crowdPoints = new THREE.Points(geo, mat);
+    stadiumGroup.add(crowdPoints);
+}
+
+function createPlayerMesh3D(team, isGK, num) {
+    const group = new THREE.Group();
+    const shirtColor = isGK ? team.gk : team.c1;
+    const shortColor = isGK ? '#111827' : team.c2;
+
+    const shirtMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.6 });
+    const shortMat = new THREE.MeshStandardMaterial({ color: shortColor, roughness: 0.7 });
+    const skinMat = new THREE.MeshStandardMaterial({ color: 0xd99b72, roughness: 0.7 });
+
+    const torso = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.0, 0.45), shirtMat);
+    torso.position.y = 1.48;
+    torso.castShadow = true;
+
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 12), skinMat);
+    head.position.y = 2.22;
+    head.castShadow = true;
+
+    const shorts = new THREE.Mesh(new THREE.BoxGeometry(0.76, 0.44, 0.42), shortMat);
+    shorts.position.y = 0.86;
+
+    const legGeo = new THREE.BoxGeometry(0.25, 0.78, 0.25);
+    const leftLeg = new THREE.Mesh(legGeo, skinMat);
+    leftLeg.position.set(-0.21, 0.39, 0);
+    const rightLeg = new THREE.Mesh(legGeo, skinMat);
+    rightLeg.position.set(0.21, 0.39, 0);
+
+    const ringGeo = new THREE.RingGeometry(0.7, 0.95, 24);
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0xfacc15, side: THREE.DoubleSide });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = 0.05;
+    ring.visible = false;
+
+    group.add(torso, head, shorts, leftLeg, rightLeg, ring);
+    group.scale.set(1.18, 1.18, 1.18);
+    group.userData = { leftLeg, rightLeg, ring, stride: Math.random() * 6 };
+    scene.add(group);
+    return group;
+}
+
+function applyGraphicsQuality() {
+    if (!renderer) return;
+    const q = document.getElementById('gfx-quality').value;
+    if (q === 'low') {
+        renderer.setPixelRatio(1);
+        renderer.shadowMap.enabled = false;
+    } else if (q === 'med') {
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+        renderer.shadowMap.enabled = true;
+    } else {
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        renderer.shadowMap.enabled = true;
+    }
+}
+
+/**
+ * ============================================================================
+ * 5. محرك المباراة والفيزياء والذكاء الاصطناعي المتطور لحارس المرمى واللاعبين
+ * ============================================================================
+ */
+const match = {
+    active: false,
+    paused: false,
+    homeTeam: null,
+    awayTeam: null,
+    homeScore: 0,
+    awayScore: 0,
+    elapsedReal: 0,
+    totalRealDuration: 150,
+    difficulty: 'normal',
+    isManagerOnly: false,
+    goalCelebrationTimer: 0,
+    ball: { x: 0, y: 0.45, z: 0, vx: 0, vy: 0, vz: 0, owner: null, cooldown: 0 },
+    players: [],
+    controlledPlayer: null,
+    stats: { homeShots: 0, awayShots: 0, homePasses: 0, awayPasses: 0, homePoss: 1, awayPoss: 1 }
+};
+
+const inputState = {
+    joyX: 0,
+    joyY: 0,
+    pressing: false,
+    shooting: false,
+    shootCharge: 0
+};
+
+function startMatch(homeTeam, awayTeam, options = {}) {
+    tryLockLandscape();
+    match.homeTeam = homeTeam;
+    match.awayTeam = awayTeam;
+    match.homeScore = 0;
+    match.awayScore = 0;
+    match.elapsedReal = 0;
+    match.totalRealDuration = options.duration || 150;
+    match.difficulty = options.difficulty || 'normal';
+    match.isManagerOnly = !!options.isManagerOnly;
+    match.paused = false;
+    match.active = true;
+    match.goalCelebrationTimer = 0;
+    match.stats = { homeShots: 0, awayShots: 0, homePasses: 0, awayPasses: 0, homePoss: 1, awayPoss: 1 };
+
+    if (useThreeJS && scene) {
+        playerMeshes.forEach(m => scene.remove(m));
+    }
+    playerMeshes = [];
+    match.players = [];
+
+    spawnTeamPlayers(homeTeam, 'home', gameState.tactics.formation, gameState.tactics.lineupIndices);
+    spawnTeamPlayers(awayTeam, 'away', '4-3-3', [0,1,2,3,4,5,6,7,8,9,10]);
+
+    resetKickoff('home');
+
+    document.getElementById('hud-home-code').textContent = homeTeam.id;
+    document.getElementById('hud-away-code').textContent = awayTeam.id;
+    document.getElementById('hud-home-color').style.background = homeTeam.c1;
+    document.getElementById('hud-away-color').style.background = awayTeam.c1;
+    updateScoreboardUI();
+
+    document.getElementById('player-controls').style.display = match.isManagerOnly ? 'none' : 'block';
+    document.getElementById('manager-bar').style.display = match.isManagerOnly ? 'flex' : 'none';
+    document.getElementById('live-tac-style').value = gameState.tactics.style;
+
+    showScreen(null);
+    document.getElementById('match-hud').classList.add('active');
+}
+
+function spawnTeamPlayers(team, side, formationName, indices) {
+    const slots = FORMATIONS[formationName] || FORMATIONS['4-3-3'];
+    slots.forEach((slot, i) => {
+        const pIdx = indices[i] !== undefined ? indices[i] : i;
+        const name = team.players[pIdx] || `Player ${i+1}`;
+        const num = pIdx + 1;
+        const isGK = slot.role === 'GK';
+
+        const nx = (slot.x - 50) / 50;
+        const ny = (slot.y - 50) / 50;
+
+        let homeX = nx * (PITCH_W * 0.44);
+        let homeZ = ny * (PITCH_L * 0.46);
+        if (side === 'away') {
+            homeX = -homeX;
+            homeZ = -homeZ;
+        }
+
+        const mesh = (useThreeJS && scene) ? createPlayerMesh3D(team, isGK, num) : null;
+        if (mesh) playerMeshes.push(mesh);
+
+        match.players.push({
+            id: `${side}_${i}`,
+            side,
+            role: slot.role,
+            isGK,
+            name,
+            num,
+            x: homeX,
+            z: homeZ,
+            vx: 0,
+            vz: 0,
+            rot: side === 'home' ? Math.PI : 0,
+            baseX: homeX,
+            baseZ: homeZ,
+            speed: isGK ? 8.2 : (7.8 + (team.ovr - 75) * 0.09),
+            gkHoldTimer: 0,
+            mesh
+        });
+    });
+}
+
+function resetKickoff(kickoffSide) {
+    match.ball.x = 0;
+    match.ball.y = 0.45;
+    match.ball.z = 0;
+    match.ball.vx = 0;
+    match.ball.vy = 0;
+    match.ball.vz = 0;
+    match.ball.owner = null;
+    match.ball.cooldown = 0.25;
+
+    match.players.forEach(p => {
+        p.x = p.baseX * 0.85;
+        p.z = p.baseZ * 0.85;
+        p.gkHoldTimer = 0;
+        if (p.side !== kickoffSide && Math.hypot(p.x, p.z) < 10) {
+            p.z += (p.side === 'home' ? 11 : -11);
+        }
+    });
+
+    const striker = match.players.find(p => p.side === kickoffSide && !p.isGK && p.role.includes('S')) ||
+                    match.players.find(p => p.side === kickoffSide && !p.isGK);
+    if (striker) {
+        striker.x = 0;
+        striker.z = kickoffSide === 'home' ? 0.6 : -0.6;
+        match.ball.owner = striker;
+        if (kickoffSide === 'home') match.controlledPlayer = striker;
+    }
+}
+
+function updateMatchPhysicsAndAI(dt) {
+    if (!match.active || match.paused) return;
+
+    if (match.goalCelebrationTimer > 0) {
+        match.goalCelebrationTimer -= dt;
+        if (match.goalCelebrationTimer <= 0) {
+            document.getElementById('goal-banner').style.display = 'none';
+            resetKickoff(match.lastScorer === 'home' ? 'away' : 'home');
+        }
+        return;
+    }
+
+    match.elapsedReal += dt;
+    if (match.elapsedReal >= match.totalRealDuration) {
+        finishMatch();
+        return;
+    }
+    updateScoreboardUI();
+
+    const b = match.ball;
+    if (b.cooldown > 0) b.cooldown -= dt;
+
+    if (inputState.shooting && match.controlledPlayer && b.owner === match.controlledPlayer) {
+        inputState.shootCharge = Math.min(1, inputState.shootCharge + dt * 1.45);
+        document.getElementById('shoot-power-bar').style.display = 'block';
+        document.getElementById('shoot-power-fill').style.width = (inputState.shootCharge * 100) + '%';
+    }
+
+    if (!match.isManagerOnly) {
+        if (b.owner && b.owner.side === 'home') {
+            match.controlledPlayer = b.owner;
+        } else if (!match.controlledPlayer || match.controlledPlayer.side !== 'home') {
+            match.controlledPlayer = getClosestPlayer('home', b.x, b.z);
+        }
+    }
+
+    if (b.owner) {
+        if (b.owner.side === 'home') match.stats.homePoss += dt;
+        else match.stats.awayPoss += dt;
+    }
+
+    const homeChaser = getClosestPlayer('home', b.x, b.z);
+    const awayChaser = getClosestPlayer('away', b.x, b.z);
+
+    match.players.forEach(p => {
+        let tx = p.baseX;
+        let tz = p.baseZ;
+        let moveSpeed = p.speed;
+
+        if (p.side === 'home') {
+            const defShift = ((gameState.tactics.defLine - 50) / 50) * -10;
+            tz += defShift;
+            if (gameState.tactics.style === 'attack') tz -= 6;
+            if (gameState.tactics.style === 'defend') tz += 7;
+        }
+
+        tz += b.z * 0.35;
+        tx += b.x * 0.25;
+
+        const isUserControlled = !match.isManagerOnly && p === match.controlledPlayer;
+
+        if (p.isGK) {
+            // ---------------------------------------------------------
+            // إصلاح ذكاء حارس المرمى بالكامل:
+            // يتحرك مع الكرة، يتصدى، وإذا أمسك الكرة يوزعها لزملائه فورًا
+            // ---------------------------------------------------------
+            const goalZ = p.side === 'home' ? (PITCH_L / 2 - 1.5) : (-PITCH_L / 2 + 1.5);
+            const clampX = Math.max(-4.2, Math.min(4.2, b.x * 0.78));
+
+            if (b.owner === p) {
+                p.gkHoldTimer += dt;
+                // يتقدم الحارس خطوة للأمام ثم يمرر أو يركل الكرة بقوة لمنتصف الملعب
+                const forwardDir = p.side === 'home' ? -1 : 1;
+                movePlayerToward(p, 0, goalZ + forwardDir * 4.5, p.speed * 0.7, dt);
+
+                if (p.gkHoldTimer > 0.65) {
+                    p.gkHoldTimer = 0;
+                    executeGKDistribution(p);
+                }
+            } else {
+                p.gkHoldTimer = 0;
+                // الخروج لمواجهة الكرة إذا كانت قريبة جدًا داخل منطقة الـ 6 ياردات
+                const distBallToGoal = Math.abs(b.z - goalZ);
+                if (!b.owner && distBallToGoal < 10 && Math.abs(b.x) < 9) {
+                    movePlayerToward(p, b.x, b.z, p.speed * 1.05, dt);
+                } else {
+                    movePlayerToward(p, clampX, goalZ, p.speed * 0.95, dt);
+                }
+            }
+        } else if (isUserControlled && (Math.abs(inputState.joyX) > 0.08 || Math.abs(inputState.joyY) > 0.08)) {
+            const dirX = inputState.joyY;
+            const dirZ = -inputState.joyX;
+            const mag = Math.min(1, Math.hypot(dirX, dirZ));
+            const speedFactor = mag < 0.45 ? 0.52 : 1.0;
+            p.vx = (dirX / mag) * p.speed * speedFactor;
+            p.vz = (dirZ / mag) * p.speed * speedFactor;
+            p.x += p.vx * dt;
+            p.z += p.vz * dt;
+            smoothRotatePlayer(p, Math.atan2(p.vx, p.vz), dt);
+        } else if (isUserControlled && inputState.pressing && b.owner !== p) {
+            movePlayerToward(p, b.x, b.z, p.speed * 1.08, dt);
+        } else {
+            if (b.owner === p) {
+                runAIWithBall(p, dt);
+            } else {
+                const isChaser = (p === homeChaser && p.side === 'home' && !isUserControlled) ||
+                                 (p === awayChaser && p.side === 'away');
+                if (isChaser && (!b.owner || b.owner.side !== p.side)) {
+                    movePlayerToward(p, b.x, b.z, moveSpeed * 0.96, dt);
+                } else {
+                    if (b.owner && b.owner.side === p.side) {
+                        const attackDir = p.side === 'home' ? -1 : 1;
+                        tz += attackDir * 9;
+                    }
+                    movePlayerToward(p, tx, tz, moveSpeed * 0.78, dt);
+                }
+            }
+        }
+
+        p.x = Math.max(-PITCH_W / 2 - 1, Math.min(PITCH_W / 2 + 1, p.x));
+        p.z = Math.max(-PITCH_L / 2 - 1, Math.min(PITCH_L / 2 + 1, p.z));
+
+        // التفاعل مع الكرة (استلام / قطع كرة / تصدي حارس)
+        const distToBall = Math.hypot(p.x - b.x, p.z - b.z);
+        const reach = p.isGK ? 1.85 : 0.95;
+        if (b.cooldown <= 0 && b.y < 2.2 && distToBall < reach) {
+            if (!b.owner) {
+                b.owner = p;
+                b.vx = b.vy = b.vz = 0;
+                if (p.isGK) {
+                    p.gkHoldTimer = 0.01;
+                    b.cooldown = 0.4;
+                }
+            } else if (b.owner.side !== p.side) {
+                const tackleChance = p.isGK ? 0.95 : (inputState.pressing && p === match.controlledPlayer ? 0.22 : 0.08);
+                if (Math.random() < tackleChance) {
+                    b.owner = p;
+                    b.cooldown = 0.35;
+                    if (p.isGK) p.gkHoldTimer = 0.01;
+                }
+            }
+        }
+    });
+
+    // تحديث فيزياء الكرة
+    if (b.owner) {
+        const o = b.owner;
+        b.x = o.x + Math.sin(o.rot) * 0.65;
+        b.z = o.z + Math.cos(o.rot) * 0.65;
+        b.y = o.isGK ? 1.05 : 0.45;
+        if (o.side === 'home' && !match.isManagerOnly && !o.isGK) {
+            match.controlledPlayer = o;
+        }
+    } else {
+        b.x += b.vx * dt;
+        b.y += b.vy * dt;
+        b.z += b.vz * dt;
+
+        if (b.y > 0.45) {
+            b.vy -= 18.5 * dt;
+        } else {
+            b.y = 0.45;
+            if (b.vy < -1.5) b.vy = -b.vy * 0.45;
+            else b.vy = 0;
+            const friction = Math.pow(0.42, dt);
+            b.vx *= friction;
+            b.vz *= friction;
+        }
+
+        checkBallBoundaries();
+    }
+
+    if (match.controlledPlayer) {
+        document.getElementById('active-player-tag').textContent =
+            `${match.controlledPlayer.num} ${match.controlledPlayer.name}`;
+    }
+}
+
+// توزيع الكرة من حارس المرمى إلى زملائه فور التصدي
+function executeGKDistribution(gk) {
+    const forwardDir = gk.side === 'home' ? -1 : 1;
+    // البحث عن زميل متاح في الوسط أو الدفاع
+    const mates = match.players.filter(m => m.side === gk.side && !m.isGK);
+    const targetMate = mates[Math.floor(Math.random() * mates.length)];
+
+    const tx = targetMate ? targetMate.x : (Math.random() - 0.5) * 30;
+    const tz = targetMate ? targetMate.z : gk.z + forwardDir * 35;
+
+    const dx = tx - match.ball.x;
+    const dz = tz - match.ball.z;
+    const dist = Math.max(1, Math.hypot(dx, dz));
+    const kickSpeed = Math.min(28, Math.max(18, dist * 0.8));
+
+    match.ball.owner = null;
+    match.ball.cooldown = 0.35;
+    match.ball.vx = (dx / dist) * kickSpeed;
+    match.ball.vz = (dz / dist) * kickSpeed;
+    match.ball.vy = 6.2;
+
+    if (gk.side === 'home' && targetMate && !match.isManagerOnly) {
+        match.controlledPlayer = targetMate;
+    }
+}
+
+function runAIWithBall(p, dt) {
+    const targetGoalZ = p.side === 'home' ? -PITCH_L / 2 : PITCH_L / 2;
+    const distToGoal = Math.abs(targetGoalZ - p.z);
+
+    if (distToGoal < 23 && Math.abs(p.x) < 16 && Math.random() < 0.045) {
+        executeShoot(p, 0.55 + Math.random() * 0.35);
+        return;
+    }
+
+    if (Math.random() < 0.035) {
+        executeSmartPass(p);
+        return;
+    }
+
+    const dodgeX = Math.sin(performance.now() * 0.002 + p.num) * 6;
+    movePlayerToward(p, dodgeX, targetGoalZ, p.speed * 0.92, dt);
+}
+
+function movePlayerToward(p, tx, tz, spd, dt) {
+    const dx = tx - p.x;
+    const dz = tz - p.z;
+    const dist = Math.hypot(dx, dz);
+    if (dist > 0.25) {
+        p.vx = (dx / dist) * spd;
+        p.vz = (dz / dist) * spd;
+        p.x += p.vx * dt;
+        p.z += p.vz * dt;
+        smoothRotatePlayer(p, Math.atan2(p.vx, p.vz), dt);
+    } else {
+        p.vx = 0;
+        p.vz = 0;
+    }
+}
+
+function smoothRotatePlayer(p, targetRot, dt) {
+    let diff = targetRot - p.rot;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    p.rot += diff * Math.min(1, dt * 12);
+}
+
+function getClosestPlayer(side, x, z) {
+    let best = null, minD = Infinity;
+    match.players.forEach(p => {
+        if (p.side !== side || p.isGK) return;
+        const d = Math.hypot(p.x - x, p.z - z);
+        if (d < minD) { minD = d; best = p; }
+    });
+    return best;
+}
+
+/**
+ * ============================================================================
+ * 6. أزرار اللعب الثلاثة: PASS / SHOOT / PRESS
+ * ============================================================================
+ */
+function executeSmartPass(passer) {
+    if (!passer || match.ball.owner !== passer) return;
+    let bestMate = null;
+    let bestScore = -Infinity;
+
+    match.players.forEach(mate => {
+        if (mate.side !== passer.side || mate === passer || mate.isGK) return;
+        const dist = Math.hypot(mate.x - passer.x, mate.z - passer.z);
+        if (dist < 3 || dist > 46) return;
+
+        const forwardGain = passer.side === 'home' ? (passer.z - mate.z) : (mate.z - passer.z);
+        const nearestOpp = getClosestPlayer(passer.side === 'home' ? 'away' : 'home', mate.x, mate.z);
+        const space = nearestOpp ? Math.hypot(nearestOpp.x - mate.x, nearestOpp.z - mate.z) : 15;
+        const score = forwardGain * 1.3 + space * 1.6 - dist * 0.45;
+        if (score > bestScore) { bestScore = score; bestMate = mate; }
+    });
+
+    const targetX = bestMate ? bestMate.x : passer.x + Math.sin(passer.rot) * 14;
+    const targetZ = bestMate ? bestMate.z : passer.z + Math.cos(passer.rot) * 14;
+    const dx = targetX - match.ball.x;
+    const dz = targetZ - match.ball.z;
+    const dist = Math.max(1, Math.hypot(dx, dz));
+    const passSpeed = Math.min(28, Math.max(15, dist * 0.88));
+
+    match.ball.owner = null;
+    match.ball.cooldown = 0.25;
+    match.ball.vx = (dx / dist) * passSpeed;
+    match.ball.vz = (dz / dist) * passSpeed;
+    match.ball.vy = dist > 24 ? 5.5 : 0.4;
+
+    if (passer.side === 'home') {
+        match.stats.homePasses++;
+        if (bestMate && !match.isManagerOnly) match.controlledPlayer = bestMate;
+    } else {
+        match.stats.awayPasses++;
+    }
+}
+
+function executeShoot(shooter, power) {
+    if (!shooter || match.ball.owner !== shooter) return;
+    const goalZ = shooter.side === 'home' ? -PITCH_L / 2 : PITCH_L / 2;
+    const aimX = (Math.random() - 0.5) * 6.4;
+    const dx = aimX - match.ball.x;
+    const dz = goalZ - match.ball.z;
+    const dist = Math.max(1, Math.hypot(dx, dz));
+    const speed = 22 + power * 16;
+
+    match.ball.owner = null;
+    match.ball.cooldown = 0.28;
+    match.ball.vx = (dx / dist) * speed;
+    match.ball.vz = (dz / dist) * speed;
+    match.ball.vy = 2.2 + power * 6.5;
+
+    if (shooter.side === 'home') match.stats.homeShots++;
+    else match.stats.awayShots++;
+}
+
+function checkBallBoundaries() {
+    const b = match.ball;
+    const halfW = PITCH_W / 2;
+    const halfL = PITCH_L / 2;
+
+    if (Math.abs(b.x) < 3.66 && b.y < 2.44) {
+        if (b.z <= -halfL) {
+            onGoalScored('home');
+            return;
+        }
+        if (b.z >= halfL) {
+            onGoalScored('away');
+            return;
+        }
+    }
+
+    if (Math.abs(b.x) > halfW) {
+        b.x = Math.sign(b.x) * (halfW - 0.5);
+        b.vx = 0; b.vz = 0; b.vy = 0;
+        const thrower = getClosestPlayer(Math.random() < 0.5 ? 'home' : 'away', b.x, b.z);
+        if (thrower) { thrower.x = b.x; thrower.z = b.z; b.owner = thrower; }
+    }
+
+    if (Math.abs(b.z) > halfL) {
+        const defendSide = b.z > 0 ? 'home' : 'away';
+        const gk = match.players.find(p => p.side === defendSide && p.isGK);
+        b.z = Math.sign(b.z) * (halfL - 3);
+        b.x = 0; b.vx = 0; b.vz = 0; b.vy = 0;
+        if (gk) {
+            gk.x = 0;
+            gk.z = b.z;
+            gk.gkHoldTimer = 0.01;
+            b.owner = gk;
+        }
+    }
+}
+
+function onGoalScored(scoringSide) {
+    if (scoringSide === 'home') match.homeScore++;
+    else match.awayScore++;
+    match.lastScorer = scoringSide;
+    match.goalCelebrationTimer = 2.4;
+    updateScoreboardUI();
+    document.getElementById('goal-banner').style.display = 'flex';
+}
+
+function updateScoreboardUI() {
+    document.getElementById('hud-score').textContent = `${match.homeScore} - ${match.awayScore}`;
+    const ratio = Math.min(1, match.elapsedReal / match.totalRealDuration);
+    const totalMins = Math.floor(ratio * 90);
+    const half = totalMins < 45 ? '1H' : '2H';
+    const mm = String(totalMins).padStart(2, '0');
+    const ss = String(Math.floor((ratio * 90 * 60) % 60)).padStart(2, '0');
+    document.getElementById('hud-clock').textContent = `${half} ${mm}:${ss}`;
+}
+
+/**
+ * ============================================================================
+ * 7. حلقة الرسم الرئيسية (كاميرا تعرض الملعب بالكامل + 3D + بديل 2.5D)
+ * ============================================================================
+ */
+let lastTime = performance.now();
+
+function renderLoop(now) {
+    const dt = Math.min(0.05, (now - lastTime) / 1000);
+    lastTime = now;
+
+    if (match.active) {
+        updateMatchPhysicsAndAI(dt);
+    }
+
+    if (useThreeJS && renderer && scene && camera) {
+        match.players.forEach(p => {
+            if (!p.mesh) return;
+            p.mesh.position.set(p.x, 0, p.z);
+            p.mesh.rotation.y = p.rot;
+
+            const speed = Math.hypot(p.vx, p.vz);
+            if (speed > 0.4) {
+                p.mesh.userData.stride += dt * speed * 1.9;
+                const swing = Math.sin(p.mesh.userData.stride) * 0.65;
+                p.mesh.userData.leftLeg.rotation.x = swing;
+                p.mesh.userData.rightLeg.rotation.x = -swing;
+            } else {
+                p.mesh.userData.leftLeg.rotation.x *= 0.85;
+                p.mesh.userData.rightLeg.rotation.x *= 0.85;
+            }
+            p.mesh.userData.ring.visible = (!match.isManagerOnly && p === match.controlledPlayer);
+        });
+
+        if (ballMesh) {
+            ballMesh.position.set(match.ball.x, match.ball.y, match.ball.z);
+            ballMesh.rotation.x += match.ball.vz * dt * 2;
+            ballMesh.rotation.z -= match.ball.vx * dt * 2;
+        }
+
+        if (crowdPoints) {
+            crowdPoints.position.y = Math.sin(now * 0.005) * (match.goalCelebrationTimer > 0 ? 0.7 : 0.12);
+        }
+
+        // كاميرا مكبّرة وواضحة تملأ الشاشة بالملعب وتتحرك بنعومة مع الكرة
+        if (match.active) {
+            const isGoal = match.goalCelebrationTimer > 0;
+            const targetCamX = isGoal ? 30 : 58;
+            const targetCamY = isGoal ? 19 : 41;
+            const targetCamZ = match.ball.z * 0.36;
+            camera.position.x += (targetCamX - camera.position.x) * Math.min(1, dt * 4);
+            camera.position.y += (targetCamY - camera.position.y) * Math.min(1, dt * 4);
+            camera.position.z += (targetCamZ - camera.position.z) * Math.min(1, dt * 4);
+            camera.lookAt(0, 0, match.ball.z * 0.36);
+        } else {
+            const ang = now * 0.00025;
+            camera.position.set(Math.cos(ang) * 58, 38, Math.sin(ang) * 58);
+            camera.lookAt(0, 0, 0);
+        }
+
+        renderer.render(scene, camera);
+    } else {
+        renderFallback25D();
+    }
+
+    requestAnimationFrame(renderLoop);
+}
+
+function renderFallback25D() {
+    const canvas = document.getElementById('game-canvas');
+    if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    ctx.fillStyle = '#14532d';
+    ctx.fillRect(0, 0, w, h);
+
+    const margin = 12;
+    const pw = w - margin * 2;
+    const ph = h - margin * 2;
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(margin, margin, pw, ph);
+    ctx.beginPath();
+    ctx.moveTo(w / 2, margin);
+    ctx.lineTo(w / 2, h - margin);
+    ctx.stroke();
+
+    if (!match.active) return;
+
+    const toScreen = (px, pz) => ({
+        sx: margin + ((-pz + PITCH_L / 2) / PITCH_L) * pw,
+        sy: margin + ((px + PITCH_W / 2) / PITCH_W) * ph
+    });
+
+    match.players.forEach(p => {
+        const { sx, sy } = toScreen(p.x, p.z);
+        ctx.fillStyle = p.side === 'home' ? match.homeTeam.c1 : match.awayTeam.c1;
+        ctx.beginPath();
+        ctx.arc(sx, sy, 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = p === match.controlledPlayer ? '#facc15' : '#000';
+        ctx.lineWidth = p === match.controlledPlayer ? 3 : 1.5;
+        ctx.stroke();
+    });
+
+    const bp = toScreen(match.ball.x, match.ball.z);
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(bp.sx, bp.sy, 6, 0, Math.PI * 2);
+    ctx.fill();
+}
+
+/**
+ * ============================================================================
+ * 8. إعداد اللمس وعصا الحركة والأزرار الثلاثة
+ * ============================================================================
+ */
+function initControls() {
+    const joyZone = document.getElementById('joystick-zone');
+    const joyStick = document.getElementById('joystick-stick');
+    let joyTouchId = null;
+
+    const updateJoy = (clientX, clientY) => {
+        const rect = joyZone.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        const maxR = rect.width * 0.36;
+        let dx = clientX - cx;
+        let dy = clientY - cy;
+        const dist = Math.hypot(dx, dy);
+        if (dist > maxR) {
+            dx = (dx / dist) * maxR;
+            dy = (dy / dist) * maxR;
+        }
+        joyStick.style.transform = `translate(${dx}px, ${dy}px)`;
+        inputState.joyX = dx / maxR;
+        inputState.joyY = dy / maxR;
+    };
+
+    const resetJoy = () => {
+        joyTouchId = null;
+        joyStick.style.transform = 'translate(0px, 0px)';
+        inputState.joyX = 0;
+        inputState.joyY = 0;
+    };
+
+    joyZone.addEventListener('touchstart', e => {
+        e.preventDefault();
+        const t = e.changedTouches[0];
+        joyTouchId = t.identifier;
+        updateJoy(t.clientX, t.clientY);
+    }, { passive: false });
+
+    joyZone.addEventListener('touchmove', e => {
+        e.preventDefault();
+        for (let t of e.changedTouches) {
+            if (t.identifier === joyTouchId) updateJoy(t.clientX, t.clientY);
+        }
+    }, { passive: false });
+
+    joyZone.addEventListener('touchend', resetJoy);
+    joyZone.addEventListener('touchcancel', resetJoy);
+
+    let mouseJoy = false;
+    joyZone.addEventListener('mousedown', e => { mouseJoy = true; updateJoy(e.clientX, e.clientY); });
+    window.addEventListener('mousemove', e => { if (mouseJoy) updateJoy(e.clientX, e.clientY); });
+    window.addEventListener('mouseup', () => { if (mouseJoy) { mouseJoy = false; resetJoy(); } });
+
+    // الزر الأول: PRESS (الكبير في الأسفل يمينًا)
+    const btnPress = document.getElementById('btn-press');
+    btnPress.addEventListener('pointerdown', e => { e.preventDefault(); inputState.pressing = true; btnPress.classList.add('pressed'); });
+    const endPress = () => { inputState.pressing = false; btnPress.classList.remove('pressed'); };
+    btnPress.addEventListener('pointerup', endPress);
+    btnPress.addEventListener('pointerleave', endPress);
+
+    // الزر الثاني: SHOOT (فوق زر PRESS)
+    const btnShoot = document.getElementById('btn-shoot');
+    btnShoot.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        inputState.shooting = true;
+        inputState.shootCharge = 0.25;
+        btnShoot.classList.add('pressed');
+    });
+    const releaseShoot = () => {
+        if (!inputState.shooting) return;
+        inputState.shooting = false;
+        btnShoot.classList.remove('pressed');
+        document.getElementById('shoot-power-bar').style.display = 'none';
+        if (match.controlledPlayer && match.ball.owner === match.controlledPlayer) {
+            executeShoot(match.controlledPlayer, inputState.shootCharge);
+        }
+        inputState.shootCharge = 0;
+    };
+    btnShoot.addEventListener('pointerup', releaseShoot);
+    btnShoot.addEventListener('pointerleave', releaseShoot);
+
+    // الزر الثالث: PASS (على يسار زر PRESS)
+    const btnPass = document.getElementById('btn-pass');
+    btnPass.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        btnPass.classList.add('pressed');
+        if (match.controlledPlayer && match.ball.owner === match.controlledPlayer) {
+            executeSmartPass(match.controlledPlayer);
+        }
+    });
+    btnPass.addEventListener('pointerup', () => btnPass.classList.remove('pressed'));
+
+    const keys = {};
+    window.addEventListener('keydown', e => {
+        keys[e.code] = true;
+        updateKeyboardJoy(keys);
+        if (e.code === 'KeyS' && match.controlledPlayer) executeSmartPass(match.controlledPlayer);
+        if (e.code === 'KeyD' && match.controlledPlayer) executeShoot(match.controlledPlayer, 0.7);
+        if (e.code === 'KeyA') inputState.pressing = true;
+    });
+    window.addEventListener('keyup', e => {
+        keys[e.code] = false;
+        updateKeyboardJoy(keys);
+        if (e.code === 'KeyA') inputState.pressing = false;
+    });
+}
+
+function updateKeyboardJoy(keys) {
+    let x = 0, y = 0;
+    if (keys['ArrowLeft']) x -= 1;
+    if (keys['ArrowRight']) x += 1;
+    if (keys['ArrowUp']) y -= 1;
+    if (keys['ArrowDown']) y += 1;
+    inputState.joyX = x;
+    inputState.joyY = y;
+}
+
+/**
+ * ============================================================================
+ * 9. واجهات FREE PLAY و WORLD CUP 2026 و MANAGER MODE
+ * ============================================================================
+ */
+function openFreePlaySetup() {
+    gameState.mode = 'freeplay';
+    renderTeamSelector('fp-home-grid', gameState.fpHomeId, id => {
+        gameState.fpHomeId = id;
+        openFreePlaySetup();
+    });
+    renderTeamSelector('fp-away-grid', gameState.fpAwayId, id => {
+        gameState.fpAwayId = id;
+        openFreePlaySetup();
+    });
+    const h = getTeam(gameState.fpHomeId);
+    const a = getTeam(gameState.fpAwayId);
+    document.getElementById('fp-home-preview').textContent = `${h.flag} ${h.name} (OVR ${h.ovr})`;
+    document.getElementById('fp-away-preview').textContent = `${a.flag} ${a.name} (OVR ${a.ovr})`;
+    showScreen('freeplay-screen');
+}
+
+function renderTeamSelector(containerId, selectedId, onSelect) {
+    const box = document.getElementById(containerId);
+    box.innerHTML = '';
+    TEAMS_48.forEach(t => {
+        const div = document.createElement('div');
+        div.className = 'team-item' + (t.id === selectedId ? ' selected' : '');
+        div.innerHTML = `
+            <div style="font-size:1.2rem;">${t.flag}</div>
+            <div class="kit-preview" style="background:${t.c1}; color:${t.c2}; border-color:${t.c2};">${t.id}</div>
+            <div style="font-size:0.75rem; font-weight:800;">${t.name}</div>
+            <div style="font-size:0.68rem; color:var(--gold);">OVR ${t.ovr}</div>
+        `;
+        div.onclick = () => onSelect(t.id);
+        box.appendChild(div);
+    });
+}
+
+function startFreePlayMatch() {
+    const home = getTeam(gameState.fpHomeId);
+    const away = getTeam(gameState.fpAwayId);
+    const duration = Number(document.getElementById('fp-duration').value);
+    const difficulty = document.getElementById('fp-difficulty').value;
+    startMatch(home, away, { duration, difficulty, isManagerOnly: false });
+}
+
+function openWorldCupEntry() {
+    const saved = localStorage.getItem('wc2026_save_v1');
+    const contBox = document.getElementById('wc-continue-box');
+    if (saved) {
+        try {
+            const parsed = JSON.parse(saved);
+            gameState.wcSave = parsed;
+            const ut = getTeam(parsed.userTeamId);
+            contBox.style.display = 'block';
+            document.getElementById('wc-save-summary').textContent =
+                `المنتخب: ${ut.flag} ${ut.name} • النمط: ${parsed.submode === 'manager' ? 'المدير الفني (Manager)' : 'لاعب'} • المرحلة: ${parsed.stageName}`;
+        } catch (e) { contBox.style.display = 'none'; }
+    } else {
+        contBox.style.display = 'none';
+    }
+
+    selectWCSubmode(gameState.wcSubmode);
+    renderTeamSelector('wc-team-grid', gameState.wcUserTeamId, id => {
+        gameState.wcUserTeamId = id;
+        openWorldCupEntry();
+    });
+    const sel = getTeam(gameState.wcUserTeamId);
+    document.getElementById('wc-selected-info').textContent = `المنتخب المختار: ${sel.flag} ${sel.name} (التقييم العام: ${sel.ovr})`;
+    showScreen('wc-entry-screen');
+}
+
+function selectWCSubmode(sub) {
+    gameState.wcSubmode = sub;
+    document.getElementById('submode-player').style.borderColor = sub === 'player' ? 'var(--green)' : 'var(--border)';
+    document.getElementById('submode-manager').style.borderColor = sub === 'manager' ? 'var(--gold)' : 'var(--border)';
+}
+
+function resetWorldCupSave() {
+    localStorage.removeItem('wc2026_save_v1');
+    gameState.wcSave = null;
+    openWorldCupEntry();
+}
+
+function createNewWorldCup() {
+    const shuffled = [...TEAMS_48].sort(() => Math.random() - 0.5);
+    const groupLetters = ['A','B','C','D','E','F','G','H','I','J','K','L'];
+    const groups = groupLetters.map((letter, idx) => {
+        const slice = shuffled.slice(idx * 4, idx * 4 + 4);
+        return {
+            name: `المجموعة ${letter}`,
+            teams: slice.map(t => ({ id: t.id, pts: 0, gf: 0, ga: 0, played: 0 }))
+        };
+    });
+
+    gameState.wcSave = {
+        userTeamId: gameState.wcUserTeamId,
+        submode: gameState.wcSubmode,
+        stage: 'groups',
+        stageName: 'مرحلة المجموعات (الجولة 1)',
+        roundIndex: 0,
+        groups,
+        knockoutMatches: [],
+        championId: null
+    };
+    saveWCProgress();
+    openWorldCupHub();
+}
+
+function saveWCProgress() {
+    if (gameState.wcSave) {
+        localStorage.setItem('wc2026_save_v1', JSON.stringify(gameState.wcSave));
+    }
+}
+
+function resumeWorldCup() {
+    if (gameState.wcSave) openWorldCupHub();
+}
+
+function openWorldCupHub() {
+    const wc = gameState.wcSave;
+    const userTeam = getTeam(wc.userTeamId);
+    document.getElementById('wc-hub-title').textContent =
+        `🏆 كأس العالم 2026 • ${userTeam.flag} ${userTeam.name} (${wc.submode === 'manager' ? 'Manager' : 'Player'})`;
+    document.getElementById('wc-stage-label').textContent = wc.stageName;
+
+    const groupsCont = document.getElementById('wc-groups-container');
+    const koCont = document.getElementById('wc-knockout-container');
+
+    if (wc.stage === 'groups') {
+        groupsCont.style.display = 'grid';
+        koCont.style.display = 'none';
+        const userGroup = wc.groups.find(g => g.teams.some(t => t.id === wc.userTeamId));
+        const oppEntry = userGroup.teams.filter(t => t.id !== wc.userTeamId)[wc.roundIndex % 3];
+        const oppTeam = getTeam(oppEntry.id);
+        wc.currentOpponentId = oppTeam.id;
+        document.getElementById('wc-next-match-title').textContent =
+            `${userTeam.flag} ${userTeam.name}  VS  ${oppTeam.flag} ${oppTeam.name}`;
+        document.getElementById('wc-play-next-btn').style.display = 'inline-flex';
+
+        groupsCont.innerHTML = '';
+        wc.groups.forEach(g => {
+            const sorted = [...g.teams].sort((a, b) => (b.pts - a.pts) || ((b.gf - b.ga) - (a.gf - a.ga)));
+            const card = document.createElement('div');
+            card.className = 'panel-box';
+            if (g === userGroup) card.style.borderColor = 'var(--gold)';
+            card.innerHTML = `
+                <h4 style="color:var(--gold); margin-bottom:4px;">${g.name}</h4>
+                <table>
+                    <tr><th>المنتخب</th><th>لعب</th><th>له</th><th>عليه</th><th>نقاط</th></tr>
+                    ${sorted.map(row => {
+                        const tm = getTeam(row.id);
+                        return `<tr style="${row.id === wc.userTeamId ? 'background:rgba(245,185,66,0.16);font-weight:900;' : ''}">
+                            <td>${tm.flag} ${tm.name}</td><td>${row.played}</td><td>${row.gf}</td><td>${row.ga}</td><td>${row.pts}</td>
+                        </tr>`;
+                    }).join('')}
+                </table>
+            `;
+            groupsCont.appendChild(card);
+        });
+    } else {
+        groupsCont.style.display = 'none';
+        koCont.style.display = 'block';
+        const oppTeam = getTeam(wc.currentOpponentId);
+        document.getElementById('wc-next-match-title').textContent =
+            wc.championId ? `🎉 بطل العالم 2026: ${getTeam(wc.championId).flag} ${getTeam(wc.championId).name}` :
+            `${userTeam.flag} ${userTeam.name}  VS  ${oppTeam.flag} ${oppTeam.name}`;
+        document.getElementById('wc-play-next-btn').style.display = wc.championId ? 'none' : 'inline-flex';
+        koCont.innerHTML = `<h3>الأدوار الإقصائية لكأس العالم 2026</h3><p style="color:var(--muted); margin-top:6px;">المرحلة الحالية: ${wc.stageName}</p>`;
+    }
+
+    showScreen('wc-hub-screen');
+}
+
+function launchNextWorldCupMatch() {
+    const wc = gameState.wcSave;
+    gameState.mode = wc.submode === 'manager' ? 'wc_manager' : 'wc_player';
+    const home = getTeam(wc.userTeamId);
+    const away = getTeam(wc.currentOpponentId);
+    startMatch(home, away, {
+        duration: 120,
+        difficulty: 'normal',
+        isManagerOnly: wc.submode === 'manager'
+    });
+}
+
+/**
+ * ============================================================================
+ * 10. شاشة التكتيك والتشكيلة (Manager Board)
+ * ============================================================================
+ */
+let selectedPitchSlot = null;
+let returnToMatchAfterTactics = false;
+
+function openTacticsScreen() {
+    returnToMatchAfterTactics = false;
+    renderTacticsBoard();
+    showScreen('tactics-screen');
+}
+
+function openInMatchTactics() {
+    document.getElementById('pause-modal').classList.remove('active');
+    returnToMatchAfterTactics = true;
+    renderTacticsBoard();
+    showScreen('tactics-screen');
+}
+
+function closeTacticsScreen() {
+    if (returnToMatchAfterTactics) {
+        showScreen(null);
+        resumeMatch();
+    } else {
+        openWorldCupHub();
+    }
+}
+
+function changeFormation(val) {
+    gameState.tactics.formation = val;
+    renderTacticsBoard();
+}
+
+function updateTacticSettings() {
+    gameState.tactics.style = document.getElementById('tac-style').value;
+    gameState.tactics.defLine = Number(document.getElementById('tac-defline').value);
+    gameState.tactics.tempo = Number(document.getElementById('tac-tempo').value);
+    gameState.tactics.captainIdx = Number(document.getElementById('tac-captain').value);
+    gameState.tactics.takerIdx = Number(document.getElementById('tac-taker').value);
+    document.getElementById('val-defline').textContent = gameState.tactics.defLine;
+    document.getElementById('val-tempo').textContent = gameState.tactics.tempo;
+}
+
+function changeLiveTactic(val) {
+    gameState.tactics.style = val;
+}
+
+function renderTacticsBoard() {
+    const teamId = gameState.wcSave ? gameState.wcSave.userTeamId : gameState.fpHomeId;
+    const team = getTeam(teamId);
+    const slots = FORMATIONS[gameState.tactics.formation];
+    const pitch = document.getElementById('tactics-pitch');
+    pitch.innerHTML = '';
+
+    slots.forEach((s, idx) => {
+        const pIdx = gameState.tactics.lineupIndices[idx];
+        const node = document.createElement('div');
+        node.className = 'pitch-node' + (selectedPitchSlot === idx ? ' active-swap' : '');
+        node.style.left = s.x + '%';
+        node.style.top = s.y + '%';
+        node.innerHTML = `<div>${s.role}</div><div>${team.players[pIdx].split(' ').pop()}</div>`;
+        node.onclick = () => {
+            if (selectedPitchSlot === null) {
+                selectedPitchSlot = idx;
+            } else {
+                const temp = gameState.tactics.lineupIndices[selectedPitchSlot];
+                gameState.tactics.lineupIndices[selectedPitchSlot] = gameState.tactics.lineupIndices[idx];
+                gameState.tactics.lineupIndices[idx] = temp;
+                selectedPitchSlot = null;
+            }
+            renderTacticsBoard();
+        };
+        pitch.appendChild(node);
+    });
+
+    const list = document.getElementById('squad-list');
+    const capSel = document.getElementById('tac-captain');
+    const takSel = document.getElementById('tac-taker');
+    list.innerHTML = '';
+    capSel.innerHTML = '';
+    takSel.innerHTML = '';
+
+    team.players.forEach((name, pIdx) => {
+        const startPos = gameState.tactics.lineupIndices.indexOf(pIdx);
+        const isStarter = startPos !== -1;
+        const opt1 = new Option(`${pIdx + 1}. ${name}`, pIdx);
+        const opt2 = new Option(`${pIdx + 1}. ${name}`, pIdx);
+        capSel.add(opt1);
+        takSel.add(opt2);
+
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:5px 8px; border-bottom:1px solid rgba(255,255,255,0.08); cursor:pointer; font-size:0.84rem;';
+        row.innerHTML = `
+            <span><b>${pIdx + 1}</b> ${name}</span>
+            <span style="font-size:0.72rem; padding:2px 7px; border-radius:6px; background:${isStarter ? 'var(--green)' : '#334155'};">
+                ${isStarter ? slots[startPos].role : 'احتياط'}
+            </span>
+        `;
+        row.onclick = () => {
+            if (selectedPitchSlot !== null && !isStarter) {
+                gameState.tactics.lineupIndices[selectedPitchSlot] = pIdx;
+                selectedPitchSlot = null;
+                renderTacticsBoard();
+            }
+        };
+        list.appendChild(row);
+    });
+
+    capSel.value = gameState.tactics.captainIdx;
+    takSel.value = gameState.tactics.takerIdx;
+}
+
+/**
+ * ============================================================================
+ * 11. الإيقاف ونهاية المباراة وتقدم البطولة
+ * ============================================================================
+ */
+function pauseMatch(openTac = false) {
+    match.paused = true;
+    if (openTac) openInMatchTactics();
+    else document.getElementById('pause-modal').classList.add('active');
+}
+
+function resumeMatch() {
+    document.getElementById('pause-modal').classList.remove('active');
+    match.paused = false;
+}
+
+function quitMatch() {
+    match.active = false;
+    document.getElementById('pause-modal').classList.remove('active');
+    document.getElementById('match-hud').classList.remove('active');
+    showScreen('main-menu');
+}
+
+function finishMatch() {
+    match.active = false;
+    document.getElementById('match-hud').classList.remove('active');
+
+    let penNote = '';
+    if (gameState.mode !== 'freeplay' && gameState.wcSave.stage !== 'groups' && match.homeScore === match.awayScore) {
+        if (Math.random() < 0.6) { match.homeScore++; penNote = ' (فوز بركلات الترجيح)'; }
+        else { match.awayScore++; penNote = ' (خسارة بركلات الترجيح)'; }
+    }
+
+    const totalPoss = match.stats.homePoss + match.stats.awayPoss;
+    const homePossPct = Math.round((match.stats.homePoss / totalPoss) * 100);
+    const awayPossPct = 100 - homePossPct;
+
+    document.getElementById('pm-score').textContent =
+        `${match.homeTeam.flag} ${match.homeScore} - ${match.awayScore} ${match.awayTeam.flag}${penNote}`;
+
+    document.getElementById('pm-stats').innerHTML = `
+        <div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>${homePossPct}%</span><b>الاستحواذ</b><span>${awayPossPct}%</span></div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>${match.stats.homeShots}</span><b>التسديدات</b><span>${match.stats.awayShots}</span></div>
+        <div style="display:flex; justify-content:space-between;"><span>${match.stats.homePasses}</span><b>التمريرات</b><span>${match.stats.awayPasses}</span></div>
+    `;
+
+    const actions = document.getElementById('pm-actions');
+    actions.innerHTML = '';
+
+    if (gameState.mode === 'freeplay') {
+        const b1 = document.createElement('button');
+        b1.className = 'btn btn-green';
+        b1.textContent = 'إعادة المباراة 🔄';
+        b1.onclick = () => {
+            document.getElementById('postmatch-modal').classList.remove('active');
+            startFreePlayMatch();
+        };
+        const b2 = document.createElement('button');
+        b2.className = 'btn';
+        b2.textContent = 'القائمة الرئيسية';
+        b2.onclick = () => {
+            document.getElementById('postmatch-modal').classList.remove('active');
+            showScreen('main-menu');
+        };
+        actions.append(b1, b2);
+    } else {
+        advanceWorldCupProgress(match.homeScore, match.awayScore);
+        const b1 = document.createElement('button');
+        b1.className = 'btn btn-gold';
+        b1.textContent = 'متابعة بطولة كأس العالم 2026 🏆';
+        b1.onclick = () => {
+            document.getElementById('postmatch-modal').classList.remove('active');
+            openWorldCupHub();
+        };
+        actions.append(b1);
+    }
+
+    document.getElementById('postmatch-modal').classList.add('active');
+}
+
+function advanceWorldCupProgress(userGoals, oppGoals) {
+    const wc = gameState.wcSave;
+    if (wc.stage === 'groups') {
+        wc.groups.forEach(g => {
+            const hasUser = g.teams.some(t => t.id === wc.userTeamId);
+            if (hasUser) {
+                const uRow = g.teams.find(t => t.id === wc.userTeamId);
+                const oRow = g.teams.find(t => t.id === wc.currentOpponentId);
+                recordGroupMatch(uRow, oRow, userGoals, oppGoals);
+                const others = g.teams.filter(t => t.id !== wc.userTeamId && t.id !== wc.currentOpponentId);
+                if (others.length === 2) {
+                    recordGroupMatch(others[0], others[1], Math.floor(Math.random()*3), Math.floor(Math.random()*3));
+                }
+            } else {
+                const idx1 = wc.roundIndex % 4;
+                const idx2 = (wc.roundIndex + 1) % 4;
+                recordGroupMatch(g.teams[idx1], g.teams[idx2], Math.floor(Math.random()*3), Math.floor(Math.random()*3));
+            }
+        });
+
+        wc.roundIndex++;
+        if (wc.roundIndex >= 3) {
+            wc.stage = 'r32';
+            wc.stageName = 'دور الـ 32 (Round of 32)';
+            pickRandomKnockoutOpponent();
+        } else {
+            wc.stageName = `مرحلة المجموعات (الجولة ${wc.roundIndex + 1})`;
+        }
+    } else {
+        if (userGoals > oppGoals) {
+            const nextStages = {
+                'r32': ['r16', 'دور الـ 16 (Round of 16)'],
+                'r16': ['qf', 'ربع النهائي (Quarter-Finals)'],
+                'qf': ['sf', 'نصف النهائي (Semi-Finals)'],
+                'sf': ['final', 'النهائي الكبير (WORLD CUP FINAL 🏆)'],
+                'final': ['champion', 'بطل كأس العالم 2026! 🎉']
+            };
+            const nxt = nextStages[wc.stage];
+            wc.stage = nxt[0];
+            wc.stageName = nxt[1];
+            if (wc.stage === 'champion') {
+                wc.championId = wc.userTeamId;
+            } else {
+                pickRandomKnockoutOpponent();
+            }
+        } else {
+            wc.stageName = 'تم الإقصاء من البطولة';
+            wc.championId = wc.currentOpponentId;
+        }
+    }
+    saveWCProgress();
+}
+
+function recordGroupMatch(t1, t2, g1, g2) {
+    t1.played++; t2.played++;
+    t1.gf += g1; t1.ga += g2;
+    t2.gf += g2; t2.ga += g1;
+    if (g1 > g2) t1.pts += 3;
+    else if (g2 > g1) t2.pts += 3;
+    else { t1.pts += 1; t2.pts += 1; }
+}
+
+function pickRandomKnockoutOpponent() {
+    const wc = gameState.wcSave;
+    const pool = TEAMS_48.filter(t => t.id !== wc.userTeamId && t.ovr >= 80);
+    wc.currentOpponentId = pool[Math.floor(Math.random() * pool.length)].id;
+}
+
+/**
+ * ============================================================================
+ * 12. التشغيل الفوري عند فتح الملف
+ * ============================================================================
+ */
+initControls();
+checkThreeAndBoot();
+requestAnimationFrame(renderLoop);
+</script>
+</body>
+</html>
